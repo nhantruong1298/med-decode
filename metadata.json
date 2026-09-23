@@ -1,0 +1,6 @@
+{
+  "name": "MedDecode - Hỗ Trợ Đọc Hiểu Kết Quả Xét Nghiệm Máu",
+  "description": "Ứng dụng hỗ trợ người dùng phổ thông đọc hiểu, kiểm tra và theo dõi kết quả xét nghiệm máu an toàn, trung tính với Cloud Firestore.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
