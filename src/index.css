@@ -1,1 +1,73 @@
 @import "tailwindcss";
+
+/* 
+ * Chế độ Soi lưới Kiểm tra Quy chuẩn
+ * - Vùng chạm đạt chuẩn >= 44x44px
+ * - Các padding theo thang bậc 8/16/24/32px
+ */
+body.inspect-ui-grid button,
+body.inspect-ui-grid input,
+body.inspect-ui-grid a {
+  outline: 1px dashed #0F766E !important;
+  outline-offset: 2px !important;
+}
+
+body.inspect-ui-grid .rounded-lg,
+body.inspect-ui-grid .rounded-xl {
+  box-shadow: inset 0 0 0 1px rgba(15, 118, 110, 0.25) !important;
+}
+
+/* Tia quét laser cho bộ phân tích OCR ảnh y tế */
+@keyframes laser-scan {
+  0% {
+    top: 0%;
+    opacity: 0.8;
+  }
+  50% {
+    top: 96%;
+    opacity: 1;
+  }
+  100% {
+    top: 0%;
+    opacity: 0.8;
+  }
+}
+
+.animate-laser {
+  animation: laser-scan 2.4s ease-in-out infinite;
+}
+
+/* Quy tắc in ấn y tế chuẩn (Print Preview) */
+@media print {
+  body {
+    background-color: #FFFFFF !important;
+    color: #0F172A !important;
+    font-size: 12pt !important;
+  }
+
+  header,
+  footer,
+  nav,
+  .no-print,
+  button:not(.allow-print) {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-page-break {
+    page-break-after: always;
+  }
+
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg {
+    box-shadow: none !important;
+  }
+
+  .border {
+    border-color: #CBD5E1 !important;
+  }
+}

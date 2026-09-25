@@ -9,6 +9,9 @@ import DashboardScreen from './screens/DashboardScreen';
 import IndicatorDetailScreen from './screens/IndicatorDetailScreen';
 import HistoryScreen from './screens/HistoryScreen';
 import CompareScreen from './screens/CompareScreen';
+import TrendsScreen from './screens/TrendsScreen';
+import DictionaryScreen from './screens/DictionaryScreen';
+import ToolsScreen from './screens/ToolsScreen';
 
 export function App() {
   return (
@@ -18,7 +21,7 @@ export function App() {
           {/* Header chung */}
           <Header />
 
-          {/* 7 Màn hình theo đặc tả */}
+          {/* Các màn hình theo đặc tả & mở rộng tiện ích y khoa */}
           <main className="flex-1 pb-12">
             <Routes>
               {/* 1. Trang chủ */}
@@ -41,6 +44,15 @@ export function App() {
 
               {/* 7. So sánh kết quả */}
               <Route path="/compare" element={<CompareScreen />} />
+
+              {/* 8. Mở rộng: Xu hướng biến thiên thời gian thực */}
+              <Route path="/trends" element={<TrendsScreen />} />
+
+              {/* 9. Mở rộng: Bách khoa tra cứu 10 chỉ số */}
+              <Route path="/dictionary" element={<DictionaryScreen />} />
+
+              {/* 10. Mở rộng: Bộ công cụ đổi đơn vị & Cẩm nang chuẩn bị */}
+              <Route path="/tools" element={<ToolsScreen />} />
 
               {/* Điều hướng mặc định */}
               <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import {
   History,
   PlusCircle,
@@ -10,9 +10,13 @@ import {
   Eye,
   Loader2,
   RefreshCw,
+  TrendingUp,
+  Printer,
+  Search,
 } from 'lucide-react';
 import Button from '../components/Button';
 import StatusBadge from '../components/StatusBadge';
+import { PrintReportModal } from '../components/PrintReportModal';
 import { useApp } from '../context/AppContext';
 import {
   SavedReport,
@@ -22,12 +26,10 @@ import {
 
 /**
  * Màn hình 6: Lịch sử xét nghiệm (FR07, FR08)
- * - Danh sách phiếu đã lưu (đọc từ Firestore), sắp xếp theo ngày giảm dần
- * - Mỗi mục là thẻ hiển thị ngày + vài chỉ số nổi bật (ví dụ WBC, GLU, CHOL...)
- * - Checkbox chọn 2 phiếu rồi bấm "So sánh"
- * - Nút "Thêm phiếu mới"
- * - Trạng thái rỗng: "Bạn chưa có kết quả xét nghiệm đã lưu." -> nút thêm phiếu xét nghiệm (mục 7)
- * - Thông báo khi bấm so sánh mà chưa chọn đủ 2 phiếu: "Cần hai phiếu đã lưu để sử dụng chức năng so sánh." (mục 7)
+ * Nâng cấp tính năng y tế:
+ * - Nút liên kết trực tiếp sang phân tích Xu hướng (Trends)
+ * - Tích hợp xem trước và in phiếu xét nghiệm chuẩn y khoa
+ * - Thanh tìm kiếm nhanh phiếu theo ngày hoặc tên
  */
 export const HistoryScreen: React.FC = () => {
   const navigate = useNavigate();
@@ -42,6 +44,18 @@ export const HistoryScreen: React.FC = () => {
   } = useApp();
 
   const [compareAlert, setCompareAlert] = useState<string | null>(null);
+  const [searchFilter, setSearchFilter] = useState<string>('');
+  const [printReportData, setPrintReportData] = useState<SavedReport | null>(null);
+
+  const filteredReports = useMemo(() => {
+    if (!searchFilter.trim()) return savedReports;
+    const q = searchFilter.toLowerCase();
+    return savedReports.filter(
+      (r) =>
+        r.ngayXetNghiem.toLowerCase().includes(q) ||
+        r.nhanPhieu.toLowerCase().includes(q)
+    );
+  }, [savedReports, searchFilter]);
 
   const handleStartCompare = () => {
     if (compareSelectedIds.length !== 2) {
@@ -78,7 +92,16 @@ export const HistoryScreen: React.FC = () => {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Nút Xu hướng */}
+          <Link
+            to="/trends"
+            className="px-3.5 py-2 rounded-lg border border-teal-200 bg-teal-50 hover:bg-teal-100 text-teal-800 text-sm font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+          >
+            <TrendingUp className="w-4 h-4 text-teal-700" />
+            <span>Xem xu hướng</span>
+          </Link>
+
           <Button
             variant="outline"
             size="sm"
@@ -115,7 +138,7 @@ export const HistoryScreen: React.FC = () => {
           </div>
           <button
             onClick={() => setCompareAlert(null)}
-            className="text-xs text-slate-500 hover:text-slate-800"
+            className="text-xs text-slate-500 hover:text-slate-800 cursor-pointer"
           >
             Đóng
           </button>
@@ -142,6 +165,20 @@ export const HistoryScreen: React.FC = () => {
           >
             So sánh 2 phiếu đã chọn
           </Button>
+        </div>
+      )}
+
+      {/* Ô tìm kiếm nhanh phiếu */}
+      {savedReports.length > 2 && (
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input
+            type="text"
+            value={searchFilter}
+            onChange={(e) => setSearchFilter(e.target.value)}
+            placeholder="Tìm theo ngày (2026-...) hoặc tên phiếu..."
+            className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-teal-600"
+          />
         </div>
       )}
 
@@ -186,7 +223,7 @@ export const HistoryScreen: React.FC = () => {
           </p>
 
           <div className="grid grid-cols-1 gap-4">
-            {savedReports.map((report) => {
+            {filteredReports.map((report) => {
               const isSelected = report.id ? compareSelectedIds.includes(report.id) : false;
 
               // Lấy 4 chỉ số đại diện: WBC, GLU, CHOL, CREA
@@ -197,7 +234,7 @@ export const HistoryScreen: React.FC = () => {
               return (
                 <div
                   key={report.id || report.ngayXetNghiem}
-                  className={`bg-white rounded-xl border transition-all p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                  className={`bg-white rounded-2xl border transition-all p-5 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4 ${
                     isSelected
                       ? 'border-[#0F766E] ring-2 ring-[#0F766E]/20 bg-teal-50/20'
                       : 'border-slate-200 hover:border-slate-300'
@@ -253,8 +290,16 @@ export const HistoryScreen: React.FC = () => {
                     })}
                   </div>
 
-                  {/* Cột phải: Nút Xem chi tiết phiếu */}
+                  {/* Cột phải: Các nút thao tác */}
                   <div className="flex items-center justify-end gap-2 shrink-0">
+                    <button
+                      onClick={() => setPrintReportData(report)}
+                      className="p-2 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-slate-900 cursor-pointer transition-colors"
+                      title="In phiếu xét nghiệm này"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
+
                     <Button
                       variant="outline"
                       size="sm"
@@ -269,6 +314,15 @@ export const HistoryScreen: React.FC = () => {
             })}
           </div>
         </div>
+      )}
+
+      {/* Modal in phiếu từ lịch sử */}
+      {printReportData && (
+        <PrintReportModal
+          isOpen={true}
+          onClose={() => setPrintReportData(null)}
+          report={printReportData}
+        />
       )}
     </div>
   );
