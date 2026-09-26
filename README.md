@@ -6,12 +6,18 @@
 
 ## Các Chức Năng Chính
 
-### 1. Đọc & Nhận Diện Phiếu Xét Nghiệm (`/upload`)
-* Hỗ trợ tải ảnh phiếu xét nghiệm từ thiết bị hoặc chụp trực tiếp từ camera.
-* Tiến trình phân tích quang học đa bước (khử nhiễu, tách bảng số liệu, khớp danh mục chỉ số).
-* Cung cấp các mẫu dữ liệu kiểm tra (phiếu chuẩn, phiếu có sai số cần chỉnh sửa, kiểm tra lỗi ảnh mờ).
+### 1. Cổng Quản Lý & Tìm Kiếm Hồ Sơ Bệnh Nhân (`/`)
+* Khi vào ứng dụng, giao diện chính hiển thị danh sách toàn bộ hồ sơ bệnh nhân.
+* Tìm kiếm tức thời hồ sơ theo họ tên, số điện thoại, mã hồ sơ hoặc nhóm máu; lọc theo giới tính hoặc hồ sơ đã có kết quả.
+* Tạo mới hồ sơ bệnh nhân (Họ tên, năm sinh, giới tính, nhóm máu, số điện thoại, tiền sử sức khỏe) và đồng bộ lưu trữ vào Cloud Firestore & thiết bị.
+* Khi mở chi tiết hồ sơ bệnh nhân, người dùng được cung cấp 2 hành động trọng tâm: **Chọn ảnh xét nghiệm (Quét AI)** hoặc **Xem lịch sử kết quả xét nghiệm**.
 
-### 2. Đối Chiếu Hai Màn Hình (`/verify`)
+### 2. Đọc & Quét Phiếu Xét Nghiệm Bằng AI (`/upload`)
+* Hỗ trợ tải tệp ảnh phiếu xét nghiệm (PNG, JPG, JPEG, WebP) từ thiết bị.
+* Tích hợp AI (Google Gemini 3.8 Flash) quét trực tiếp hình ảnh, tự động nhận diện chữ, ngày tháng lấy mẫu và bảng chỉ số y khoa gắn với hồ sơ bệnh nhân đang chọn.
+* Tự động bóc tách số liệu đưa vào biểu mẫu đối chiếu; phát hiện và thông báo nếu có số liệu bị mờ hoặc không rõ nét.
+
+### 3. Đối Chiếu Hai Màn Hình (`/verify`)
 * Đặt ảnh gốc (phóng to/thu nhỏ) song song cạnh biểu mẫu nhập liệu.
 * Cho phép chỉnh sửa từng trường số liệu, tự động cảnh báo các ô thiếu dữ liệu hoặc giá trị bất thường.
 
@@ -61,6 +67,7 @@
 ## Ngăn Xếp Công Nghệ (Tech Stack)
 
 * **Giao diện**: React 19, Vite, TypeScript.
+* **Xử lý AI Backend**: Google GenAI SDK (`@google/genai` với mô hình `gemini-3.8-flash`), Express Node.js.
 * **Định kiểu (Styling)**: Tailwind CSS v4, Google Fonts (*Be Vietnam Pro*).
 * **Biểu tượng (Icons)**: Lucide React.
 * **Cơ sở dữ liệu**: Google Cloud Firestore (Firebase Web SDK).

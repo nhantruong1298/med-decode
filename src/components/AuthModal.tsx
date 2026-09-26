@@ -154,71 +154,84 @@ export const AuthModal: React.FC = () => {
               Chọn hồ sơ bệnh nhân đang theo dõi để tự động gắn vào kết quả xét nghiệm và bản in:
             </div>
 
-            <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
-              {profiles.map((profile) => {
-                const isActive = currentUser?.id === profile.id;
-                const age = new Date().getFullYear() - profile.namSinh;
+            {profiles.length === 0 ? (
+              <div className="py-8 text-center space-y-3 bg-slate-50 rounded-xl p-4 border border-dashed border-slate-200">
+                <p className="text-xs text-slate-500">Chưa có hồ sơ bệnh nhân nào trong cơ sở dữ liệu.</p>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('new')}
+                  className="px-3 py-1.5 rounded-lg bg-[#0F766E] text-white text-xs font-semibold hover:bg-[#0D655E] transition-colors cursor-pointer"
+                >
+                  + Tạo hồ sơ mới ngay
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {profiles.map((profile) => {
+                  const isActive = currentUser?.id === profile.id;
+                  const age = new Date().getFullYear() - profile.namSinh;
 
-                return (
-                  <div
-                    key={profile.id}
-                    onClick={() => switchProfile(profile.id)}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
-                      isActive
-                        ? 'bg-teal-50/70 border-teal-400 ring-2 ring-teal-500/20 shadow-xs'
-                        : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-11 h-11 rounded-xl text-white font-bold flex items-center justify-center text-sm shadow-xs ${
-                          profile.avatarColor || 'bg-teal-600'
-                        }`}
-                      >
-                        {profile.hoTen
-                          .split(' ')
-                          .map((n) => n[0])
-                          .slice(-2)
-                          .join('')}
+                  return (
+                    <div
+                      key={profile.id}
+                      onClick={() => switchProfile(profile.id)}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between ${
+                        isActive
+                          ? 'bg-teal-50/70 border-teal-400 ring-2 ring-teal-500/20 shadow-xs'
+                          : 'bg-white border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-11 h-11 rounded-xl text-white font-bold flex items-center justify-center text-sm shadow-xs ${
+                            profile.avatarColor || 'bg-teal-600'
+                          }`}
+                        >
+                          {profile.hoTen
+                            .split(' ')
+                            .map((n) => n[0])
+                            .slice(-2)
+                            .join('')}
+                        </div>
+
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm text-slate-900">
+                              {profile.hoTen}
+                            </span>
+                            <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
+                              {profile.maHoSo}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-500 flex items-center gap-2">
+                            <span>
+                              {profile.gioiTinh}, {age} tuổi
+                            </span>
+                            <span>•</span>
+                            <span className="font-semibold text-rose-600">
+                              Nhóm {profile.nhomMau}
+                            </span>
+                            <span>•</span>
+                            <span>{profile.soDienThoai}</span>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-slate-900">
-                            {profile.hoTen}
-                          </span>
-                          <span className="text-[10px] font-mono px-1.5 py-0.2 bg-slate-100 text-slate-600 rounded">
-                            {profile.maHoSo}
-                          </span>
-                        </div>
-                        <div className="text-xs text-slate-500 flex items-center gap-2">
-                          <span>
-                            {profile.gioiTinh}, {age} tuổi
-                          </span>
-                          <span>•</span>
-                          <span className="font-semibold text-rose-600">
-                            Nhóm {profile.nhomMau}
-                          </span>
-                          <span>•</span>
-                          <span>{profile.soDienThoai}</span>
-                        </div>
-                      </div>
+                      {isActive ? (
+                        <span className="text-xs font-semibold text-teal-800 bg-teal-100/80 px-2.5 py-1 rounded-lg flex items-center gap-1">
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                          Đang chọn
+                        </span>
+                      ) : (
+                        <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600">
+                          Chọn
+                        </span>
+                      )}
                     </div>
-
-                    {isActive ? (
-                      <span className="text-xs font-semibold text-teal-800 bg-teal-100/80 px-2.5 py-1 rounded-lg flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" />
-                        Đang chọn
-                      </span>
-                    ) : (
-                      <span className="text-xs font-medium text-slate-400 group-hover:text-slate-600">
-                        Chọn
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

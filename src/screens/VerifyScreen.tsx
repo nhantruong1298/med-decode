@@ -45,10 +45,7 @@ export const VerifyScreen: React.FC = () => {
     );
   }
 
-  const defaultSampleImage =
-    'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="600" height="750" viewBox="0 0 600 750" fill="%23FFFFFF"><rect width="600" height="750" fill="%23FFFFFF" stroke="%23CBD5E1" stroke-width="2"/><text x="30" y="50" font-family="sans-serif" font-size="20" font-weight="bold" fill="%230F172A">BỆNH VIỆN ĐA KHOA TRUNG TÂM</text><text x="30" y="75" font-family="sans-serif" font-size="13" fill="%23475569">KHOA XÉT NGHIỆM HUYẾT HỌC - SINH HÓA</text><line x1="30" y1="95" x2="570" y2="95" stroke="%230F766E" stroke-width="2"/><text x="30" y="130" font-family="sans-serif" font-size="14" fill="%23334155">Họ tên: Nguyễn Văn A (Nam, 32 tuổi)</text><text x="380" y="130" font-family="sans-serif" font-size="14" fill="%23334155">Ngày lấy mẫu: 10/09/2026</text><rect x="30" y="160" width="540" height="35" fill="%23F1F5F9"/><text x="45" y="183" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">TÊN XÉT NGHIỆM</text><text x="240" y="183" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">KẾT QUẢ</text><text x="350" y="183" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">ĐƠN VỊ</text><text x="450" y="183" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">THAM CHIẾU</text><text x="45" y="225" font-family="sans-serif" font-size="13" fill="%230F172A">WBC (Bạch cầu)</text><text x="240" y="225" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">7.2</text><text x="350" y="225" font-family="sans-serif" font-size="13" fill="%23475569">x10⁹/L</text><text x="450" y="225" font-family="sans-serif" font-size="13" fill="%23475569">4.0 - 10.0</text><text x="45" y="265" font-family="sans-serif" font-size="13" fill="%230F172A">RBC (Hồng cầu)</text><text x="240" y="265" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">4.8</text><text x="350" y="265" font-family="sans-serif" font-size="13" fill="%23475569">x10¹²/L</text><text x="450" y="265" font-family="sans-serif" font-size="13" fill="%23475569">4.0 - 5.8</text><text x="45" y="305" font-family="sans-serif" font-size="13" fill="%230F172A">HGB (Huyết sắc tố)</text><text x="240" y="305" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">145</text><text x="350" y="305" font-family="sans-serif" font-size="13" fill="%23475569">g/L</text><text x="450" y="305" font-family="sans-serif" font-size="13" fill="%23475569">120 - 170</text><text x="45" y="345" font-family="sans-serif" font-size="13" fill="%230F172A">HCT (Dung tích HC)</text><text x="240" y="345" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">42</text><text x="350" y="345" font-family="sans-serif" font-size="13" fill="%23475569">%</text><text x="450" y="345" font-family="sans-serif" font-size="13" fill="%23475569">37 - 50</text><text x="45" y="385" font-family="sans-serif" font-size="13" fill="%230F172A">PLT (Tiểu cầu)</text><text x="240" y="385" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">250</text><text x="350" y="385" font-family="sans-serif" font-size="13" fill="%23475569">x10⁹/L</text><text x="450" y="385" font-family="sans-serif" font-size="13" fill="%23475569">150 - 400</text><text x="45" y="425" font-family="sans-serif" font-size="13" fill="%230F172A">GLU (Glucose đói)</text><text x="240" y="425" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">5.2</text><text x="350" y="425" font-family="sans-serif" font-size="13" fill="%23475569">mmol/L</text><text x="450" y="425" font-family="sans-serif" font-size="13" fill="%23475569">3.9 - 6.4</text><text x="45" y="465" font-family="sans-serif" font-size="13" fill="%230F172A">CHOL (Cholesterol TP)</text><text x="240" y="465" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">5.1</text><text x="350" y="465" font-family="sans-serif" font-size="13" fill="%23475569">mmol/L</text><text x="450" y="465" font-family="sans-serif" font-size="13" fill="%23475569">3.0 - 5.2</text><text x="45" y="505" font-family="sans-serif" font-size="13" fill="%230F172A">CREA (Creatinine)</text><text x="240" y="505" font-family="sans-serif" font-size="13" fill="%2394A3B8">[Mực in mờ - 80]</text><text x="350" y="505" font-family="sans-serif" font-size="13" fill="%23475569">µmol/L</text><text x="450" y="505" font-family="sans-serif" font-size="13" fill="%23475569">62 - 106</text><text x="45" y="545" font-family="sans-serif" font-size="13" fill="%230F172A">AST (SGOT)</text><text x="240" y="545" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">28</text><text x="350" y="545" font-family="sans-serif" font-size="13" fill="%23475569">U/L</text><text x="450" y="545" font-family="sans-serif" font-size="13" fill="%23475569">5 - 40</text><text x="45" y="585" font-family="sans-serif" font-size="13" fill="%230F172A">ALT (SGPT)</text><text x="240" y="585" font-family="sans-serif" font-size="13" font-weight="bold" fill="%230F172A">32</text><text x="350" y="585" font-family="sans-serif" font-size="13" fill="%23475569">U/L</text><text x="450" y="585" font-family="sans-serif" font-size="13" fill="%23475569">5 - 41</text><line x1="30" y1="620" x2="570" y2="620" stroke="%23CBD5E1" stroke-width="1"/><text x="400" y="655" font-family="sans-serif" font-size="13" fill="%23334155">BÁC SĨ XÉT NGHIỆM</text><text x="420" y="700" font-family="sans-serif" font-style="italic" font-size="14" fill="%230F766E">Bs. Trần Văn B</text></svg>';
-
-  const displayImage = currentImage || defaultSampleImage;
+  const displayImage = currentImage || '';
 
   // Cập nhật giá trị chỉ số
   const handleValueChange = (ma: string, valStr: string) => {
@@ -203,19 +200,30 @@ export const VerifyScreen: React.FC = () => {
             </div>
           </div>
 
-          <div className="relative rounded-lg border border-slate-200 bg-slate-100 overflow-auto max-h-[550px] p-2 flex items-center justify-center">
-            <img
-              src={displayImage}
-              alt="Ảnh phiếu xét nghiệm gốc"
-              style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
-              className="transition-transform duration-150 max-w-full"
-            />
+          <div className="relative rounded-lg border border-slate-200 bg-slate-100 overflow-auto max-h-[550px] p-2 flex items-center justify-center min-h-[250px]">
+            {displayImage ? (
+              <img
+                src={displayImage}
+                alt="Ảnh phiếu xét nghiệm gốc"
+                style={{ transform: `scale(${zoomLevel})`, transformOrigin: 'top center' }}
+                className="transition-transform duration-150 max-w-full"
+              />
+            ) : (
+              <div className="text-center p-6 text-slate-400 space-y-2">
+                <p className="text-xs font-medium">Chưa có ảnh phiếu xét nghiệm hiển thị.</p>
+              </div>
+            )}
           </div>
 
-          <div className="text-xs text-[#475569] text-left">
-            <p className="font-medium text-slate-700">Mẹo đối chiếu kiểm thử:</p>
-            <p>• Cholesterol trong ảnh là 5.1 (được nhận diện sai thành 6.1)</p>
-            <p>• Creatinine trên ảnh ghi 80 nhưng mực in mờ nên hệ thống để trống</p>
+          <div className="text-xs text-[#475569] text-left space-y-1">
+            <p className="font-semibold text-slate-700">Hướng dẫn đối chiếu:</p>
+            <p>• Phóng to hoặc thu nhỏ ảnh bên trên để nhìn rõ từng dòng kết quả.</p>
+            <p>• Kiểm tra các số liệu đã được nhận diện ở cột bên phải, chạm vào ô để chỉnh sửa nếu chưa khớp.</p>
+            {currentReport.chiSo.some((c) => c.ma === 'CHOL' && Number(c.giaTri) === 6.1) && (
+              <p className="text-amber-700 font-medium">
+                • Lưu ý kiểm tra: Cholesterol trên ảnh gốc thường là 5.1, hãy xác nhận lại.
+              </p>
+            )}
           </div>
         </div>
 
@@ -230,8 +238,8 @@ export const VerifyScreen: React.FC = () => {
             </p>
           </div>
 
-          {/* Ngày xét nghiệm */}
-          <div className="p-3.5 bg-slate-50 rounded-lg border border-slate-200">
+          {/* Ngày xét nghiệm & Tên phiếu */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 p-3.5 bg-slate-50 rounded-lg border border-slate-200">
             <InputField
               id="input-ngayxetnghiem"
               label="Ngày xét nghiệm"
@@ -240,9 +248,20 @@ export const VerifyScreen: React.FC = () => {
               onChange={(e) => handleDateChange(e.target.value)}
               error={errors['ngayXetNghiem']}
             />
+            <InputField
+              id="input-nhanphieu"
+              label="Tên phiếu / Cơ sở y tế"
+              type="text"
+              value={currentReport.nhanPhieu || ''}
+              onChange={(e) => {
+                setIsDirty(true);
+                setCurrentReport((prev) => (prev ? { ...prev, nhanPhieu: e.target.value } : null));
+              }}
+              placeholder="VD: BV Đa Khoa Trung Tâm"
+            />
           </div>
 
-          {/* Danh sách 10 chỉ số */}
+          {/* Danh sách 10 chỉ số cơ bản */}
           <div className="space-y-4">
             <h3 className="text-sm font-semibold text-[#0F172A] border-b border-slate-100 pb-2">
               Bộ 10 chỉ số xét nghiệm huyết học & sinh hóa
@@ -292,6 +311,34 @@ export const VerifyScreen: React.FC = () => {
                 );
               })}
             </div>
+
+            {/* Các chỉ số xét nghiệm khác mà AI trích xuất được từ ảnh phiếu */}
+            {currentReport.chiSo.some((c) => !DANH_SACH_MA_CHI_SO.includes(c.ma)) && (
+              <div className="pt-4 border-t border-slate-100 space-y-3">
+                <h4 className="text-xs font-bold text-teal-800 uppercase tracking-wider">
+                  Chỉ số bổ sung được AI trích xuất từ phiếu
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {currentReport.chiSo
+                    .filter((c) => !DANH_SACH_MA_CHI_SO.includes(c.ma))
+                    .map((item) => (
+                      <div
+                        key={item.ma}
+                        className="p-3 rounded-lg border border-teal-200 bg-teal-50/30"
+                      >
+                        <InputField
+                          id={`input-${item.ma.toLowerCase()}`}
+                          label={`${item.ma} (Bổ sung)`}
+                          unit={item.donVi}
+                          value={item.giaTri !== null && item.giaTri !== undefined ? item.giaTri : ''}
+                          onChange={(e) => handleValueChange(item.ma, e.target.value)}
+                          placeholder="Giá trị"
+                        />
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Nút Xác nhận thông tin ở cuối */}

@@ -40,7 +40,7 @@ Tạo file `.env` từ file mẫu `.env.example`:
   copy .env.example .env
   ```
 
-*(Lưu ý: Ứng dụng đã được cấu hình sẵn kết nối Firebase Firestore trong file `firebase-applet-config.json` nên có thể chạy ngay mà không cần cấu hình thêm).*
+*(Lưu ý: Ứng dụng đã được cấu hình sẵn kết nối Firebase Firestore. Để sử dụng tính năng quét phiếu bằng AI, bạn điền khóa `GEMINI_API_KEY` vào file `.env` - trên AI Studio khóa này được tự động cung cấp).*
 
 ---
 

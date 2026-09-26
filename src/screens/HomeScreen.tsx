@@ -1,351 +1,942 @@
-import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
-  FileText,
-  Camera,
-  History,
-  ShieldCheck,
-  ChevronRight,
-  Info,
-  CheckCircle2,
-  Sparkles,
+  Users,
+  Search,
+  Plus,
   ArrowRight,
-  Eye,
+  Upload,
+  History,
   TrendingUp,
-  BookOpen,
-  Calculator,
-  ClipboardCheck,
-  UserCheck,
-  Heart,
+  FileText,
   Calendar,
+  Phone,
+  ArrowLeft,
+  X,
+  Eye,
+  Trash2,
+  Loader2,
+  CheckCircle2,
+  UserCheck,
 } from 'lucide-react';
 import Button from '../components/Button';
 import { useApp } from '../context/AppContext';
+import { UserProfile, SavedReport } from '../data/labDictionary';
 
 export const HomeScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { savedReports, currentUser, setIsAuthModalOpen } = useApp();
+  const {
+    profiles,
+    currentUser,
+    switchProfile,
+    createProfile,
+    deleteProfile,
+    savedReports,
+    setCurrentReport,
+    setIsDirty,
+    isLoadingProfiles,
+  } = useApp();
 
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
-      {/* Hero section */}
-      <div className="text-center space-y-4 pt-2">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0F766E] text-xs font-semibold">
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Hệ thống Đọc hiểu & Theo dõi Kết quả Xét nghiệm Máu</span>
+  // State quản lý xem danh sách hồ sơ hay xem chi tiết hồ sơ
+  const [activePatientDetailId, setActivePatientDetailId] = useState<string | null>(null);
+
+  // State tìm kiếm & bộ lọc
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [genderFilter, setGenderFilter] = useState<'ALL' | 'Nam' | 'Nữ' | 'HAS_REPORTS'>('ALL');
+
+  // Modal tạo hồ sơ mới
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
+  const [newHoTen, setNewHoTen] = useState('');
+  const [newNamSinh, setNewNamSinh] = useState('1994');
+  const [newGioiTinh, setNewGioiTinh] = useState<'Nam' | 'Nữ'>('Nam');
+  const [newNhomMau, setNewNhomMau] = useState<UserProfile['nhomMau']>('O+');
+  const [newPhone, setNewPhone] = useState('');
+  const [newNotes, setNewNotes] = useState('');
+  const [createError, setCreateError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Tìm hồ sơ đang chọn xem chi tiết
+  const selectedPatient = useMemo(() => {
+    if (!activePatientDetailId) return null;
+    return profiles.find((p) => p.id === activePatientDetailId) || null;
+  }, [profiles, activePatientDetailId]);
+
+  // Đếm số lượng phiếu xét nghiệm theo từng bệnh nhân
+  const patientReportCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    const latestDates: Record<string, string> = {};
+
+    savedReports.forEach((report) => {
+      const matchedProfile = profiles.find(
+        (p) =>
+          (report.patientId && p.id === report.patientId) ||
+          (report.patientName && p.hoTen.toLowerCase() === report.patientName.toLowerCase())
+      );
+
+      if (matchedProfile) {
+        counts[matchedProfile.id] = (counts[matchedProfile.id] || 0) + 1;
+        if (
+          !latestDates[matchedProfile.id] ||
+          new Date(report.ngayXetNghiem) > new Date(latestDates[matchedProfile.id])
+        ) {
+          latestDates[matchedProfile.id] = report.ngayXetNghiem;
+        }
+      }
+    });
+
+    return { counts, latestDates };
+  }, [savedReports, profiles]);
+
+  // Lọc danh sách hồ sơ theo tìm kiếm & bộ lọc
+  const filteredProfiles = useMemo(() => {
+    return profiles.filter((p) => {
+      const q = searchQuery.toLowerCase().trim();
+      const matchSearch =
+        !q ||
+        p.hoTen.toLowerCase().includes(q) ||
+        p.soDienThoai.replace(/\s+/g, '').includes(q.replace(/\s+/g, '')) ||
+        p.maHoSo.toLowerCase().includes(q) ||
+        p.nhomMau.toLowerCase().includes(q);
+
+      if (!matchSearch) return false;
+
+      if (genderFilter === 'Nam') return p.gioiTinh === 'Nam';
+      if (genderFilter === 'Nữ') return p.gioiTinh === 'Nữ';
+      if (genderFilter === 'HAS_REPORTS') return (patientReportCounts.counts[p.id] || 0) > 0;
+
+      return true;
+    });
+  }, [profiles, searchQuery, genderFilter, patientReportCounts]);
+
+  // Xử lý tạo hồ sơ mới thật lưu vào Firestore
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreateError('');
+
+    if (!newHoTen.trim()) {
+      setCreateError('Vui lòng nhập họ và tên bệnh nhân.');
+      return;
+    }
+
+    const birthYear = parseInt(newNamSinh, 10);
+    const currentYear = new Date().getFullYear();
+    if (isNaN(birthYear) || birthYear < 1900 || birthYear > currentYear) {
+      setCreateError(`Năm sinh không hợp lệ (từ 1900 đến ${currentYear}).`);
+      return;
+    }
+
+    if (!newPhone.trim()) {
+      setCreateError('Vui lòng nhập số điện thoại liên hệ.');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const created = await createProfile({
+        hoTen: newHoTen.trim(),
+        namSinh: birthYear,
+        gioiTinh: newGioiTinh,
+        nhomMau: newNhomMau,
+        soDienThoai: newPhone.trim(),
+        ghiChuSucKhoe: newNotes.trim() || '',
+      });
+
+      // Reset form & đóng modal
+      setNewHoTen('');
+      setNewPhone('');
+      setNewNotes('');
+      setIsCreateModalOpen(false);
+
+      // Chuyển thẳng vào xem chi tiết của bệnh nhân vừa tạo
+      setActivePatientDetailId(created.id);
+    } catch (err: any) {
+      setCreateError(err?.message || 'Không thể tạo hồ sơ. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Xóa hồ sơ với xác nhận
+  const handleDeleteProfile = async (profile: UserProfile, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const confirmed = window.confirm(
+      `Bạn có chắc chắn muốn xóa hồ sơ của bệnh nhân "${profile.hoTen}" khỏi cơ sở dữ liệu?`
+    );
+    if (confirmed) {
+      await deleteProfile(profile.id);
+      if (activePatientDetailId === profile.id) {
+        setActivePatientDetailId(null);
+      }
+    }
+  };
+
+  // Mở chi tiết hồ sơ bệnh nhân
+  const handleOpenDetail = (profile: UserProfile) => {
+    switchProfile(profile.id);
+    setActivePatientDetailId(profile.id);
+  };
+
+  // Nhanh: Chọn ảnh xét nghiệm cho bệnh nhân
+  const handleGoToUpload = (profile: UserProfile, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    switchProfile(profile.id);
+    navigate('/upload');
+  };
+
+  // Nhanh: Xem lịch sử xét nghiệm của bệnh nhân
+  const handleGoToHistory = (profile: UserProfile, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    switchProfile(profile.id);
+    navigate('/history');
+  };
+
+  // Xem chi tiết một phiếu trong Dashboard
+  const handleViewReport = (report: SavedReport) => {
+    setCurrentReport({
+      ngayXetNghiem: report.ngayXetNghiem,
+      nhanPhieu: report.nhanPhieu,
+      chiSo: [...report.chiSo],
+    });
+    setIsDirty(false);
+    navigate('/dashboard');
+  };
+
+  // Lấy danh sách phiếu của bệnh nhân đang chọn xem chi tiết
+  const currentPatientReports = useMemo(() => {
+    if (!selectedPatient) return [];
+    return savedReports.filter(
+      (r) =>
+        (r.patientId && r.patientId === selectedPatient.id) ||
+        (r.patientName && r.patientName.toLowerCase() === selectedPatient.hoTen.toLowerCase())
+    );
+  }, [savedReports, selectedPatient]);
+
+  // ==========================================
+  // VIEW 2: MÀN HÌNH CHI TIẾT HỒ SƠ BỆNH NHÂN
+  // ==========================================
+  if (selectedPatient) {
+    const age = new Date().getFullYear() - selectedPatient.namSinh;
+    const reportCount = currentPatientReports.length;
+
+    return (
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Nút quay lại danh sách hồ sơ */}
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setActivePatientDetailId(null)}
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#0F766E] hover:text-[#0D655E] hover:underline cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Quay lại danh sách tất cả hồ sơ</span>
+          </button>
+
+          <span className="text-xs text-slate-500 font-mono">
+            Mã hồ sơ: <strong className="text-slate-800">{selectedPatient.maHoSo}</strong>
+          </span>
         </div>
 
-        <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#0F172A] max-w-2xl mx-auto leading-tight">
-          Hỗ trợ đọc hiểu kết quả xét nghiệm máu an toàn và trung tính
-        </h1>
-        <p className="text-base sm:text-lg text-[#475569] max-w-xl mx-auto leading-relaxed">
-          Giúp người dùng tự tin kiểm tra số liệu, hiểu rõ các dải tham chiếu sinh hóa mà không bị hoang mang bởi các cảnh báo gây sợ hãi.
-        </p>
-      </div>
-
-      {/* THẺ HỒ SƠ BỆNH NHÂN ĐANG HOẠT ĐỘNG (Local Patient Profile Card) */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
-        <div className="flex items-center gap-3.5">
-          <div
-            className={`w-12 h-12 rounded-2xl text-white font-bold flex items-center justify-center text-base shadow-xs shrink-0 ${
-              currentUser?.avatarColor || 'bg-teal-600'
-            }`}
-          >
-            {currentUser?.hoTen
-              ? currentUser.hoTen
+        {/* Khối thông tin chi tiết hồ sơ bệnh nhân */}
+        <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 text-left relative overflow-hidden">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <div className="flex items-start sm:items-center gap-4">
+              <div
+                className={`w-16 h-16 rounded-2xl text-white font-extrabold flex items-center justify-center text-xl shadow-xs shrink-0 ${
+                  selectedPatient.avatarColor || 'bg-teal-600'
+                }`}
+              >
+                {selectedPatient.hoTen
                   .split(' ')
                   .map((n) => n[0])
                   .slice(-2)
-                  .join('')
-              : 'BN'}
-          </div>
+                  .join('')}
+              </div>
 
-          <div className="space-y-0.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                Hồ sơ đang mở:
-              </span>
-              <span className="font-extrabold text-base text-slate-900">
-                {currentUser?.hoTen || 'Khách vãng lai'}
-              </span>
-              {currentUser && (
-                <span className="text-[10px] font-mono font-bold px-2 py-0.5 bg-teal-50 text-teal-800 rounded border border-teal-200">
-                  {currentUser.maHoSo}
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-2xl font-bold text-slate-900">
+                    {selectedPatient.hoTen}
+                  </h1>
+                  <span className="text-xs font-mono font-bold px-2.5 py-0.5 bg-teal-50 text-teal-800 rounded-full border border-teal-200">
+                    {selectedPatient.maHoSo}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm text-slate-600">
+                  <span className="font-medium">
+                    {selectedPatient.gioiTinh} · {age} tuổi ({selectedPatient.namSinh})
+                  </span>
+                  <span>•</span>
+                  <span className="font-semibold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-xs">
+                    Nhóm máu: {selectedPatient.nhomMau}
+                  </span>
+                  <span>•</span>
+                  <span className="flex items-center gap-1 font-mono">
+                    <Phone className="w-3.5 h-3.5 text-slate-400" />
+                    {selectedPatient.soDienThoai}
+                  </span>
+                </div>
+
+                {selectedPatient.ghiChuSucKhoe && (
+                  <p className="text-xs text-slate-500 pt-1">
+                    <span className="font-medium text-slate-700">Lưu ý sức khỏe: </span>
+                    {selectedPatient.ghiChuSucKhoe}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-center">
+              <button
+                onClick={() => setActivePatientDetailId(null)}
+                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+              >
+                <UserCheck className="w-4 h-4 text-teal-700" />
+                <span>Đổi hồ sơ</span>
+              </button>
+
+              <button
+                onClick={() => handleDeleteProfile(selectedPatient)}
+                className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors border border-red-200 cursor-pointer"
+                title="Xóa hồ sơ khỏi cơ sở dữ liệu"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* HAI HÀNH ĐỘNG TRỌNG TÂM: CHỌN ẢNH XÉT NGHIỆM VÀ XEM LỊCH SỬ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-left">
+          {/* HÀNH ĐỘNG 1: TẢI & CHỌN ẢNH XÉT NGHIỆM */}
+          <div className="bg-gradient-to-br from-white to-teal-50/40 rounded-2xl border-2 border-teal-200 shadow-sm p-6 space-y-4 hover:border-teal-300 transition-all flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-xl bg-teal-600 text-white flex items-center justify-center shadow-xs">
+                <Upload className="w-6 h-6" />
+              </div>
+              <div>
+                <span className="text-xs font-bold text-teal-700 uppercase tracking-wider">
+                  Xét nghiệm mới
                 </span>
-              )}
+                <h3 className="text-xl font-bold text-slate-900 mt-0.5">
+                  Chọn ảnh xét nghiệm
+                </h3>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Tải tệp ảnh phiếu xét nghiệm máu từ máy tính hoặc điện thoại. AI sẽ tự động đọc ngày xét nghiệm và bóc tách các chỉ số y khoa để đối chiếu.
+              </p>
             </div>
 
-            <div className="text-xs text-slate-500 flex flex-wrap items-center gap-3">
-              {currentUser ? (
-                <>
-                  <span>
-                    {currentUser.gioiTinh} · {new Date().getFullYear() - currentUser.namSinh} tuổi
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<ArrowRight className="w-5 h-5" />}
+              onClick={() => navigate('/upload')}
+              className="w-full justify-center text-base py-3 shadow-md shadow-teal-900/10"
+            >
+              Chọn ảnh & Quét bằng AI
+            </Button>
+          </div>
+
+          {/* HÀNH ĐỘNG 2: XEM LỊCH SỬ XÉT NGHIỆM */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-4 hover:border-slate-300 transition-all flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 text-slate-800 flex items-center justify-center shadow-xs border border-slate-200">
+                <History className="w-6 h-6 text-[#0F766E]" />
+              </div>
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Dữ liệu đã lưu
                   </span>
-                  <span>•</span>
-                  <span className="font-semibold text-rose-600">
-                    Nhóm máu: {currentUser.nhomMau}
+                  <span className="text-xs font-mono font-bold bg-teal-50 text-teal-800 px-2.5 py-0.5 rounded-full border border-teal-200">
+                    {reportCount} phiếu
                   </span>
-                  <span>•</span>
-                  <span>{currentUser.soDienThoai}</span>
-                </>
-              ) : (
-                <span>Chưa đăng nhập hồ sơ — Bạn có thể đăng nhập để lưu kết quả riêng biệt.</span>
-              )}
+                </div>
+                <h3 className="text-xl font-bold text-slate-900 mt-0.5">
+                  Xem lịch sử xét nghiệm
+                </h3>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Theo dõi diễn tiến qua các đợt khám, so sánh kết quả giữa 2 phiếu và xuất bản in tóm tắt y khoa dành riêng cho bệnh nhân này.
+              </p>
             </div>
+
+            <Button
+              variant="outline"
+              size="lg"
+              icon={<History className="w-5 h-5" />}
+              onClick={() => navigate('/history')}
+              className="w-full justify-center text-base py-3"
+            >
+              Mở lịch sử ({reportCount} phiếu)
+            </Button>
           </div>
         </div>
 
-        <button
-          onClick={() => setIsAuthModalOpen(true)}
-          className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-        >
-          <UserCheck className="w-4 h-4 text-teal-700" />
-          <span>{currentUser ? 'Đổi hồ sơ khác' : 'Đăng nhập hồ sơ'}</span>
-        </button>
-      </div>
+        {/* DANH SÁCH PHIẾU XÉT NGHIỆM GẦN ĐÂY CỦA BỆNH NHÂN */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-4 text-left shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#0F766E]" />
+              <h3 className="font-bold text-slate-900">
+                Các phiếu xét nghiệm gần đây của {selectedPatient.hoTen}
+              </h3>
+            </div>
+            {reportCount > 0 && (
+              <button
+                onClick={() => navigate('/history')}
+                className="text-xs font-semibold text-[#0F766E] hover:underline cursor-pointer"
+              >
+                Xem tất cả ({reportCount})
+              </button>
+            )}
+          </div>
 
-      {/* Card nổi bật hành động chính: Tải ảnh / Chụp phiếu */}
-      <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-6 text-left relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-teal-50/50 rounded-full blur-3xl pointer-events-none -mr-16 -mt-16" />
+          {currentPatientReports.length === 0 ? (
+            <div className="py-8 text-center space-y-3">
+              <div className="w-12 h-12 rounded-full bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                <FileText className="w-6 h-6" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-slate-700">
+                  Chưa có phiếu xét nghiệm nào được lưu cho bệnh nhân này
+                </p>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Hãy chọn một tệp ảnh phiếu xét nghiệm để thực hiện lần kiểm tra đầu tiên.
+                </p>
+              </div>
+              <Button
+                variant="primary"
+                size="sm"
+                icon={<Upload className="w-4 h-4" />}
+                onClick={() => navigate('/upload')}
+              >
+                Chọn ảnh xét nghiệm ngay
+              </Button>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {currentPatientReports.slice(0, 4).map((report) => (
+                <div
+                  key={report.id || report.ngayXetNghiem}
+                  className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/80 rounded-xl px-2 transition-colors"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-slate-900 text-sm">
+                        {report.nhanPhieu}
+                      </span>
+                      <span className="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-0.5 rounded">
+                        {report.ngayXetNghiem}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Đã ghi nhận {report.chiSo.length} chỉ số huyết học & sinh hóa
+                    </p>
+                  </div>
 
-        <div className="space-y-1 relative">
-          <span className="text-xs font-bold tracking-wider uppercase text-[#0F766E]">
-            Bắt đầu tác vụ
-          </span>
-          <h2 className="text-xl sm:text-2xl font-bold text-[#0F172A]">
-            Đọc và kiểm tra phiếu xét nghiệm của bạn
-          </h2>
-          <p className="text-sm text-[#475569]">
-            Chọn ảnh đã chụp sẵn trong thư viện hoặc mở camera thiết bị để đối chiếu với bộ 10 chỉ số xét nghiệm phổ biến.
-          </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      icon={<Eye className="w-3.5 h-3.5" />}
+                      onClick={() => handleViewReport(report)}
+                      className="text-xs"
+                    >
+                      Xem kết quả
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      </div>
+    );
+  }
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-2 relative">
+  // ==========================================
+  // VIEW 1: DANH SÁCH HỒ SƠ BỆNH NHÂN (TRANG CHỦ MẶC ĐỊNH)
+  // ==========================================
+  return (
+    <div className="max-w-5xl mx-auto px-4 py-8 space-y-7">
+      {/* Tiêu đề & Giới thiệu */}
+      <div className="text-left space-y-2">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0F766E] text-xs font-semibold">
+          <Users className="w-3.5 h-3.5" />
+          <span>Hồ Sơ Bệnh Nhân & Quản Lý Kết Quả Xét Nghiệm</span>
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[#0F172A]">
+              Danh sách hồ sơ bệnh nhân
+            </h1>
+            <p className="text-sm text-[#475569] mt-1">
+              Dữ liệu được lưu trữ trên Cloud Firestore. Chọn một hồ sơ để bắt đầu đọc phiếu xét nghiệm hoặc tạo mới nếu chưa có.
+            </p>
+          </div>
+
           <Button
             variant="primary"
-            size="lg"
-            icon={<Camera className="w-5 h-5" />}
-            onClick={() => navigate('/upload')}
-            className="w-full justify-center text-base"
-          >
-            Chụp / Tải ảnh phiếu mới
-          </Button>
-
-          <Button
-            variant="outline"
-            size="lg"
-            icon={<History className="w-5 h-5" />}
-            onClick={() => navigate('/history')}
-            className="w-full justify-center text-base"
-          >
-            Xem lịch sử đã lưu ({savedReports.length})
-          </Button>
-        </div>
-
-        {/* Cam kết dữ liệu trung tính & an toàn */}
-        <div className="pt-4 border-t border-slate-100 flex items-start gap-3 text-xs text-[#475569] leading-relaxed relative">
-          <ShieldCheck className="w-4 h-4 text-[#0F766E] shrink-0 mt-0.5" />
-          <span>
-            Ứng dụng KHÔNG cung cấp chẩn đoán y khoa hay kết luận bệnh. Toàn bộ thông tin được trình bày trung tính nhằm phục vụ mục đích đọc hiểu thông tin và chuẩn bị câu hỏi thảo luận với nhân viên y tế.
-          </span>
-        </div>
-      </div>
-
-      {/* BỘ CÔNG CỤ VÀ TIỆN ÍCH Y KHOA CHUYÊN NGHIỆP */}
-      <div className="space-y-4 text-left">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-bold text-[#0F172A]">
-              Tiện ích y khoa & Bách khoa tra cứu
-            </h3>
-            <p className="text-xs text-[#475569] mt-0.5">
-              Các tính năng hỗ trợ mở rộng tham khảo từ các hệ thống theo dõi sức khỏe y tế chuyên nghiệp
-            </p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Card 1: Xu hướng */}
-          <Link
-            to="/trends"
-            className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-300 hover:shadow-sm transition-all group flex flex-col justify-between"
-          >
-            <div className="space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F766E] flex items-center justify-center group-hover:scale-105 transition-transform">
-                <TrendingUp className="w-5 h-5" />
-              </div>
-              <h4 className="font-bold text-sm text-slate-900 group-hover:text-teal-700 transition-colors">
-                Biểu đồ xu hướng
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Theo dõi diễn tiến biến thiên của 10 chỉ số qua nhiều đợt xét nghiệm theo thời gian.
-              </p>
-            </div>
-            <div className="pt-3 flex items-center text-xs font-semibold text-teal-700 mt-2">
-              <span>Mở biểu đồ</span>
-              <ChevronRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* Card 2: Từ điển */}
-          <Link
-            to="/dictionary"
-            className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-300 hover:shadow-sm transition-all group flex flex-col justify-between"
-          >
-            <div className="space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F766E] flex items-center justify-center group-hover:scale-105 transition-transform">
-                <BookOpen className="w-5 h-5" />
-              </div>
-              <h4 className="font-bold text-sm text-slate-900 group-hover:text-teal-700 transition-colors">
-                Bách khoa 10 chỉ số
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Tra cứu ý nghĩa, khoảng tham chiếu chuẩn Nam/Nữ và yếu tố sinh lý ảnh hưởng.
-              </p>
-            </div>
-            <div className="pt-3 flex items-center text-xs font-semibold text-teal-700 mt-2">
-              <span>Tra cứu ngay</span>
-              <ChevronRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* Card 3: Đổi đơn vị & BMI */}
-          <Link
-            to="/tools"
-            className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-300 hover:shadow-sm transition-all group flex flex-col justify-between"
-          >
-            <div className="space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F766E] flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Calculator className="w-5 h-5" />
-              </div>
-              <h4 className="font-bold text-sm text-slate-900 group-hover:text-teal-700 transition-colors">
-                Công cụ y khoa & BMI
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Quy đổi đơn vị xét nghiệm (mmol/L ↔ mg/dL) và tính chỉ số thể trạng BMI.
-              </p>
-            </div>
-            <div className="pt-3 flex items-center text-xs font-semibold text-teal-700 mt-2">
-              <span>Tính toán</span>
-              <ChevronRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-
-          {/* Card 4: Cẩm nang chuẩn bị */}
-          <Link
-            to="/tools"
-            className="bg-white p-5 rounded-2xl border border-slate-200/90 shadow-xs hover:border-teal-300 hover:shadow-sm transition-all group flex flex-col justify-between"
-          >
-            <div className="space-y-2.5">
-              <div className="w-10 h-10 rounded-xl bg-teal-50 text-[#0F766E] flex items-center justify-center group-hover:scale-105 transition-transform">
-                <ClipboardCheck className="w-5 h-5" />
-              </div>
-              <h4 className="font-bold text-sm text-slate-900 group-hover:text-teal-700 transition-colors">
-                Cẩm nang chuẩn bị
-              </h4>
-              <p className="text-xs text-slate-500 leading-relaxed">
-                Checklist tương tác các lưu ý nhịn ăn, uống nước, thuốc men trước khi lấy máu.
-              </p>
-            </div>
-            <div className="pt-3 flex items-center text-xs font-semibold text-teal-700 mt-2">
-              <span>Xem checklist</span>
-              <ChevronRight className="w-3.5 h-3.5 ml-1 group-hover:translate-x-0.5 transition-transform" />
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* Luồng trải nghiệm 3 bước */}
-      <div className="space-y-4 text-left">
-        <div className="flex items-center justify-between">
-          <h3 className="text-base font-bold text-[#0F172A]">
-            Luồng tương tác 3 bước trực quan
-          </h3>
-          <span className="text-xs text-slate-500 font-medium">Quy chuẩn tương tác</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0F766E] font-bold text-sm flex items-center justify-center">
-              1
-            </div>
-            <h4 className="font-bold text-sm text-[#0F172A]">Tải & Quét Phiếu</h4>
-            <p className="text-xs text-[#475569] leading-relaxed">
-              Tải ảnh phiếu giấy, hệ thống bảo mật không lưu ảnh gốc lên máy chủ để bảo vệ quyền riêng tư tuyệt đối.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0F766E] font-bold text-sm flex items-center justify-center">
-              2
-            </div>
-            <h4 className="font-bold text-sm text-[#0F172A]">Đối chiếu 2 màn hình</h4>
-            <p className="text-xs text-[#475569] leading-relaxed">
-              Đặt ảnh gốc có thể phóng to bên cạnh danh sách số liệu, cho phép người dùng kiểm soát và chỉnh sửa mọi sai sót.
-            </p>
-          </div>
-
-          <div className="p-5 rounded-2xl bg-white border border-slate-200/90 shadow-xs space-y-2">
-            <div className="w-8 h-8 rounded-lg bg-teal-50 text-[#0F766E] font-bold text-sm flex items-center justify-center">
-              3
-            </div>
-            <h4 className="font-bold text-sm text-[#0F172A]">Giải mã & Lưu trữ</h4>
-            <p className="text-xs text-[#475569] leading-relaxed">
-              Trình bày trực quan bằng thước đo màu ngọc, phân loại 4 trạng thái trung tính và lưu trữ an toàn với Firestore.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Lối vào nhanh Lịch sử xét nghiệm gần đây nếu có */}
-      {savedReports.length > 0 && (
-        <div className="bg-white rounded-2xl border border-slate-200 p-5 space-y-4 text-left shadow-xs">
-          <div className="flex items-center justify-between">
-            <h3 className="text-base font-semibold text-[#0F172A] flex items-center gap-2">
-              <History className="w-4 h-4 text-[#0F766E]" />
-              <span>Phiếu gần nhất trong Firestore</span>
-            </h3>
-            <button
-              onClick={() => navigate('/history')}
-              className="text-xs font-semibold text-[#0F766E] hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>Xem tất cả ({savedReports.length})</span>
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div
+            size="md"
+            icon={<Plus className="w-4 h-4" />}
             onClick={() => {
-              navigate('/history');
+              setCreateError('');
+              setIsCreateModalOpen(true);
             }}
-            className="p-4 rounded-xl border border-slate-100 bg-slate-50/80 hover:bg-slate-100 transition-colors cursor-pointer flex items-center justify-between"
+            className="shrink-0 shadow-sm"
           >
-            <div>
-              <p className="text-sm font-bold text-[#0F172A]">
-                {savedReports[0].nhanPhieu}
-              </p>
-              <p className="text-xs text-[#475569] mt-0.5">
-                Ngày: {savedReports[0].ngayXetNghiem} · {savedReports[0].chiSo.length} chỉ số được theo dõi
-              </p>
-            </div>
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#0F766E]">
-              <span>Mở xem</span>
-              <ChevronRight className="w-4 h-4 text-slate-400" />
-            </div>
+            Tạo hồ sơ mới
+          </Button>
+        </div>
+      </div>
+
+      {/* ĐANG TẢI DỮ LIỆU TỪ FIRESTORE */}
+      {isLoadingProfiles && profiles.length === 0 && (
+        <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-3">
+          <Loader2 className="w-8 h-8 text-[#0F766E] animate-spin mx-auto" />
+          <p className="text-sm font-medium text-slate-600">
+            Đang tải dữ liệu hồ sơ từ cơ sở dữ liệu Firestore...
+          </p>
+        </div>
+      )}
+
+      {/* TRƯỜNG HỢP 1: HOÀN TOÀN CHƯA CÓ HỒ SƠ NÀO TRONG DATABASE */}
+      {!isLoadingProfiles && profiles.length === 0 && (
+        <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 sm:p-14 text-center space-y-5 shadow-xs">
+          <div className="w-16 h-16 rounded-2xl bg-teal-50 text-[#0F766E] mx-auto flex items-center justify-center border border-teal-200 shadow-xs">
+            <Users className="w-8 h-8" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-slate-900">
+              Chưa có hồ sơ bệnh nhân nào trong cơ sở dữ liệu
+            </h2>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Hệ thống không sử dụng dữ liệu mẫu giả lập. Hãy bấm nút bên dưới để tạo hồ sơ bệnh nhân thật đầu tiên của bạn.
+            </p>
+          </div>
+          <div className="pt-2">
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<Plus className="w-5 h-5" />}
+              onClick={() => {
+                setCreateError('');
+                setIsCreateModalOpen(true);
+              }}
+              className="shadow-md shadow-teal-900/10 text-base py-3"
+            >
+              + Tạo hồ sơ bệnh nhân đầu tiên
+            </Button>
           </div>
         </div>
       )}
 
-      {/* Ghi chú hướng phát triển tiếp theo */}
-      <div className="rounded-xl bg-slate-100/80 border border-slate-200 p-4 text-left text-xs text-[#475569] flex items-start gap-3">
-        <Info className="w-4 h-4 text-slate-500 shrink-0 mt-0.5" />
-        <div>
-          <span className="font-semibold text-slate-700">Hướng phát triển tiếp theo: </span>
-          <span>
-            Tính năng nhận diện quang học nâng cao từ camera, kết nối chuyên gia y tế và mở rộng danh mục xét nghiệm sinh hóa/miễn dịch chuyên sâu sẽ được nghiên cứu trong các phiên bản kế tiếp.
-          </span>
+      {/* TRƯỜNG HỢP 2: ĐÃ CÓ HỒ SƠ TRONG DATABASE */}
+      {profiles.length > 0 && (
+        <>
+          {/* THANH CÔNG CỤ: TÌM KIẾM & BỘ LỌC */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3 text-left">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+              {/* Ô tìm kiếm */}
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm theo tên bệnh nhân, số điện thoại, mã hồ sơ (VD: BN-88421)..."
+                  className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:bg-white transition-all"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Bộ lọc loại */}
+              <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 text-xs">
+                <button
+                  onClick={() => setGenderFilter('ALL')}
+                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
+                    genderFilter === 'ALL'
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Tất cả ({profiles.length})
+                </button>
+                <button
+                  onClick={() => setGenderFilter('Nam')}
+                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
+                    genderFilter === 'Nam'
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Nam
+                </button>
+                <button
+                  onClick={() => setGenderFilter('Nữ')}
+                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
+                    genderFilter === 'Nữ'
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Nữ
+                </button>
+                <button
+                  onClick={() => setGenderFilter('HAS_REPORTS')}
+                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
+                    genderFilter === 'HAS_REPORTS'
+                      ? 'bg-teal-700 text-white shadow-xs'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Có kết quả
+                </button>
+              </div>
+            </div>
+
+            {/* Thống kê kết quả tìm kiếm */}
+            <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+              <span>
+                Hiển thị <strong>{filteredProfiles.length}</strong> / {profiles.length} hồ sơ bệnh nhân
+              </span>
+              {currentUser && (
+                <span className="text-[11px] text-teal-800 font-medium bg-teal-50 px-2 py-0.5 rounded border border-teal-200">
+                  Đang chọn: {currentUser.hoTen} ({currentUser.maHoSo})
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* DANH SÁCH THẺ HỒ SƠ */}
+          {filteredProfiles.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center space-y-4">
+              <div className="w-16 h-16 rounded-2xl bg-slate-100 text-slate-400 mx-auto flex items-center justify-center">
+                <Search className="w-8 h-8" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-slate-800">
+                  Không tìm thấy hồ sơ bệnh nhân phù hợp
+                </h3>
+                <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                  Không có hồ sơ nào khớp với từ khóa "{searchQuery}".
+                </p>
+              </div>
+              <div className="flex justify-center gap-3">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setGenderFilter('ALL');
+                  }}
+                >
+                  Xóa bộ lọc
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  icon={<Plus className="w-4 h-4" />}
+                  onClick={() => setIsCreateModalOpen(true)}
+                >
+                  Tạo hồ sơ mới ngay
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-left">
+              {filteredProfiles.map((profile) => {
+                const age = new Date().getFullYear() - profile.namSinh;
+                const reportsCount = patientReportCounts.counts[profile.id] || 0;
+                const latestDate = patientReportCounts.latestDates[profile.id];
+                const isCurrentActive = currentUser?.id === profile.id;
+
+                return (
+                  <div
+                    key={profile.id}
+                    className={`bg-white rounded-2xl border transition-all p-5 flex flex-col justify-between space-y-4 hover:shadow-md cursor-pointer ${
+                      isCurrentActive
+                        ? 'border-teal-500 ring-2 ring-teal-500/20 shadow-xs'
+                        : 'border-slate-200 hover:border-slate-300'
+                    }`}
+                    onClick={() => handleOpenDetail(profile)}
+                  >
+                    {/* Phần trên: Avatar + Tên + Mã */}
+                    <div className="space-y-3">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={`w-12 h-12 rounded-xl text-white font-bold flex items-center justify-center text-base shadow-xs shrink-0 ${
+                              profile.avatarColor || 'bg-teal-600'
+                            }`}
+                          >
+                            {profile.hoTen
+                              .split(' ')
+                              .map((n) => n[0])
+                              .slice(-2)
+                              .join('')}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-bold text-slate-900 text-base leading-tight">
+                                {profile.hoTen}
+                              </h3>
+                            </div>
+                            <span className="text-[11px] font-mono font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded border border-teal-200 mt-1 inline-block">
+                              {profile.maHoSo}
+                            </span>
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={(e) => handleDeleteProfile(profile, e)}
+                          className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Xóa hồ sơ này"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Thông tin nhân khẩu */}
+                      <div className="text-xs text-slate-600 space-y-1.5 pt-1 border-t border-slate-100">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Giới tính & Tuổi:</span>
+                          <span className="font-semibold text-slate-800">
+                            {profile.gioiTinh} · {age} tuổi ({profile.namSinh})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Nhóm máu:</span>
+                          <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-200 text-[11px]">
+                            {profile.nhomMau}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Số điện thoại:</span>
+                          <span className="font-mono text-slate-800">{profile.soDienThoai}</span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-500">Phiếu xét nghiệm:</span>
+                          <span className="font-semibold text-teal-800 bg-teal-50 px-2 py-0.5 rounded text-[11px]">
+                            {reportsCount} phiếu
+                            {latestDate ? ` (gần nhất ${latestDate})` : ''}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ghi chú sức khỏe */}
+                      {profile.ghiChuSucKhoe && (
+                        <p className="text-[11px] text-slate-500 line-clamp-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          {profile.ghiChuSucKhoe}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Phần dưới: Các nút bấm thao tác */}
+                    <div
+                      className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        icon={<ArrowRight className="w-3.5 h-3.5" />}
+                        onClick={() => handleOpenDetail(profile)}
+                        className="flex-1 justify-center text-xs"
+                      >
+                        Vào chi tiết hồ sơ
+                      </Button>
+
+                      <button
+                        onClick={(e) => handleGoToUpload(profile, e)}
+                        className="p-2 rounded-lg bg-teal-50 text-teal-700 hover:bg-teal-100 transition-colors border border-teal-200 cursor-pointer"
+                        title="Chọn ảnh xét nghiệm ngay cho hồ sơ này"
+                      >
+                        <Upload className="w-3.5 h-3.5" />
+                      </button>
+
+                      <button
+                        onClick={(e) => handleGoToHistory(profile, e)}
+                        className="p-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors border border-slate-200 cursor-pointer"
+                        title="Xem lịch sử xét nghiệm của hồ sơ này"
+                      >
+                        <History className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* MODAL TẠO HỒ SƠ BỆNH NHÂN MỚI (LƯU VÀO FIRESTORE) */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 sm:p-7 shadow-2xl space-y-5 my-8 border border-slate-200 text-left animate-in fade-in">
+            {/* Header modal */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-xl bg-teal-50 border border-teal-200 text-[#0F766E] flex items-center justify-center font-bold">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">
+                    Tạo hồ sơ bệnh nhân mới
+                  </h2>
+                  <p className="text-xs text-slate-500">
+                    Hồ sơ thật sẽ được lưu trữ trực tiếp vào cơ sở dữ liệu Cloud Firestore
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Báo lỗi nếu thiếu */}
+            {createError && (
+              <div className="p-3 bg-red-50 text-red-700 text-xs rounded-xl border border-red-200">
+                {createError}
+              </div>
+            )}
+
+            {/* Biểu mẫu nhập liệu */}
+            <form onSubmit={handleCreateSubmit} className="space-y-4 text-xs sm:text-sm">
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Họ và tên bệnh nhân <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ví dụ: Nguyễn Thị Hoa"
+                  value={newHoTen}
+                  onChange={(e) => setNewHoTen(e.target.value)}
+                  className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0F766E] focus:outline-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Năm sinh <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min="1900"
+                    max={new Date().getFullYear()}
+                    value={newNamSinh}
+                    onChange={(e) => setNewNamSinh(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0F766E] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Giới tính sinh học <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    value={newGioiTinh}
+                    onChange={(e) => setNewGioiTinh(e.target.value as 'Nam' | 'Nữ')}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0F766E] focus:outline-none bg-white"
+                  >
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Nhóm máu
+                  </label>
+                  <select
+                    value={newNhomMau}
+                    onChange={(e) => setNewNhomMau(e.target.value as UserProfile['nhomMau'])}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0F766E] focus:outline-none bg-white font-mono"
+                  >
+                    <option value="O+">O+ (Phổ biến)</option>
+                    <option value="O-">O- (Hiếm)</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    Số điện thoại liên hệ <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    placeholder="Ví dụ: 0912 345 678"
+                    value={newPhone}
+                    onChange={(e) => setNewPhone(e.target.value)}
+                    className="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0F766E] focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  Tiền sử bệnh lý / Lưu ý sức khỏe (nếu có)
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Ví dụ: Tiền sử dị ứng thuốc, cần theo dõi đường huyết hoặc mỡ máu..."
+                  value={newNotes}
+                  onChange={(e) => setNewNotes(e.target.value)}
+                  className="w-full px-3.5 py-2 border border-slate-300 rounded-xl focus:ring-2 focus:ring-[#0F766E] focus:outline-none resize-none"
+                />
+              </div>
+
+              {/* Nút hành động */}
+              <div className="pt-2 flex justify-end gap-3 border-t border-slate-100">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="md"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  disabled={isSubmitting}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  icon={isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Đang lưu vào Firestore...' : 'Lưu hồ sơ vào Database'}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 };

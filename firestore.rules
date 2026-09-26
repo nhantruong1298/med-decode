@@ -1,10 +1,10 @@
 rules_version = '2';
-// CẢNH BÁO: Cấu hình Firestore Rules này mở cho phép đọc/ghi công khai
-// dành riêng cho mục đích đồ án học thuật / demo nghiên cứu UI/UX MedDecode.
-// KHÔNG dùng quy tắc này trong môi trường sản phẩm thực tế (production).
 service cloud.firestore {
   match /databases/{database}/documents {
     match /savedReports/{reportId} {
+      allow read, write: if true;
+    }
+    match /patientProfiles/{profileId} {
       allow read, write: if true;
     }
   }

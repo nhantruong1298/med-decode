@@ -3,15 +3,15 @@ import {
   collection,
   getDocs,
   addDoc,
+  deleteDoc,
+  doc,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
   SavedReport,
   ChiSoItem,
-  KICH_BAN_PHIEU_B,
   UserProfile,
-  DANH_SACH_HO_SO_MAC_DINH,
 } from '../data/labDictionary';
 
 interface AppContextType {
@@ -30,34 +30,40 @@ interface AppContextType {
       chiSo: ChiSoItem[];
     } | null>
   >;
+
+  // Kịch bản demo kiểm thử
   selectedDemoScenario: 'A' | 'ERROR';
-  setSelectedDemoScenario: (scenario: 'A' | 'ERROR') => void;
+  setSelectedDemoScenario: (s: 'A' | 'ERROR') => void;
+
+  // Trạng thái đã sửa đổi dữ liệu (Dirty state)
   isDirty: boolean;
   setIsDirty: (dirty: boolean) => void;
 
-  // Lịch sử từ Firestore
+  // Lịch sử báo cáo kết quả (Lưu vào Cloud Firestore)
   savedReports: SavedReport[];
   isLoadingReports: boolean;
   loadSavedReports: () => Promise<void>;
-  saveReportToFirestore: (reportData: {
+  saveReportToFirestore: (report: {
     ngayXetNghiem: string;
     nhanPhieu: string;
     chiSo: ChiSoItem[];
   }) => Promise<{ success: boolean; id?: string; error?: string }>;
-  seedInitialDataIfEmpty: () => Promise<void>;
 
-  // So sánh
+  // Chọn phiếu so sánh
   compareSelectedIds: string[];
   setCompareSelectedIds: React.Dispatch<React.SetStateAction<string[]>>;
   toggleCompareSelect: (id: string) => void;
 
-  // Hệ thống Hồ sơ & Đăng nhập Local
+  // Hệ thống Hồ sơ Bệnh nhân thật (lưu vào Firestore)
   currentUser: UserProfile | null;
   profiles: UserProfile[];
+  isLoadingProfiles: boolean;
+  loadProfilesFromFirestore: () => Promise<void>;
   switchProfile: (profileId: string) => void;
   loginUser: (phoneOrId: string) => boolean;
   logoutUser: () => void;
-  createProfile: (data: Omit<UserProfile, 'id' | 'maHoSo'>) => UserProfile;
+  createProfile: (data: Omit<UserProfile, 'id' | 'maHoSo'>) => Promise<UserProfile>;
+  deleteProfile: (profileId: string) => Promise<void>;
   isAuthModalOpen: boolean;
   setIsAuthModalOpen: (open: boolean) => void;
 }
@@ -83,55 +89,67 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Chọn 2 phiếu để so sánh
   const [compareSelectedIds, setCompareSelectedIds] = useState<string[]>([]);
 
-  // Local Authentication & Profiles
+  // Hồ sơ bệnh nhân thật (Nạp từ Firestore và lưu cache)
+  const [isLoadingProfiles, setIsLoadingProfiles] = useState<boolean>(true);
   const [profiles, setProfiles] = useState<UserProfile[]>(() => {
     try {
       const saved = localStorage.getItem('meddecode_profiles');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        // Lọc bỏ triệt để các ID hồ sơ giả cũ
+        if (Array.isArray(parsed)) {
+          const realOnly = parsed.filter(
+            (p: any) => p && p.id && !['user-1', 'user-2', 'user-3'].includes(p.id)
+          );
+          return realOnly;
+        }
       }
     } catch (e) {
-      console.warn('Không thể nạp hồ sơ từ localStorage:', e);
+      console.warn('Không thể nạp hồ sơ từ cache:', e);
     }
-    return DANH_SACH_HO_SO_MAC_DINH;
+    return [];
   });
 
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
     try {
       const activeId = localStorage.getItem('meddecode_active_user_id');
-      if (activeId) {
-        const found = DANH_SACH_HO_SO_MAC_DINH.find((p) => p.id === activeId);
-        if (found) return found;
+      if (activeId && !['user-1', 'user-2', 'user-3'].includes(activeId)) {
+        const saved = localStorage.getItem('meddecode_profiles');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed)) {
+            const found = parsed.find((p: any) => p.id === activeId);
+            if (found) return found;
+          }
+        }
       }
     } catch (e) {
-      console.warn('Không thể nạp tài khoản active từ localStorage:', e);
+      console.warn('Không thể nạp tài khoản active từ cache:', e);
     }
-    // Mặc định đăng nhập hồ sơ đầu tiên
-    return DANH_SACH_HO_SO_MAC_DINH[0];
+    return null;
   });
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // Lưu profiles vào localStorage
+  // Đồng bộ profiles vào localStorage
   useEffect(() => {
     try {
       localStorage.setItem('meddecode_profiles', JSON.stringify(profiles));
     } catch (e) {
-      console.warn('Lỗi lưu profiles vào localStorage:', e);
+      console.warn('Lỗi lưu profiles vào cache:', e);
     }
   }, [profiles]);
 
-  // Lưu active user vào localStorage
+  // Đồng bộ active user vào localStorage
   useEffect(() => {
     try {
-      if (currentUser) {
+      if (currentUser && !['user-1', 'user-2', 'user-3'].includes(currentUser.id)) {
         localStorage.setItem('meddecode_active_user_id', currentUser.id);
       } else {
         localStorage.removeItem('meddecode_active_user_id');
       }
     } catch (e) {
-      console.warn('Lỗi lưu active user vào localStorage:', e);
+      console.warn('Lỗi lưu active user vào cache:', e);
     }
   }, [currentUser]);
 
@@ -156,23 +174,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsAuthModalOpen(false);
       return true;
     }
-    // Nếu không tìm thấy, nếu nhập số điện thoại thì tạo hồ sơ nhanh
-    if (clean.length >= 8) {
-      const newProfile: UserProfile = {
-        id: `user-${Date.now()}`,
-        hoTen: `Người dùng ${clean.slice(-4)}`,
-        namSinh: 1995,
-        gioiTinh: 'Nam',
-        nhomMau: 'O+',
-        soDienThoai: phoneOrId.trim(),
-        maHoSo: `BN-${Math.floor(10000 + Math.random() * 90000)}`,
-        avatarColor: 'bg-teal-700',
-      };
-      setProfiles((prev) => [...prev, newProfile]);
-      setCurrentUser(newProfile);
-      setIsAuthModalOpen(false);
-      return true;
-    }
     return false;
   };
 
@@ -180,32 +181,130 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentUser(null);
   };
 
-  const createProfile = (data: Omit<UserProfile, 'id' | 'maHoSo'>): UserProfile => {
-    const colors = ['bg-teal-600', 'bg-rose-600', 'bg-indigo-600', 'bg-sky-600', 'bg-emerald-600', 'bg-amber-600'];
+  // Tạo hồ sơ mới thật và lưu vào Firestore
+  const createProfile = async (
+    data: Omit<UserProfile, 'id' | 'maHoSo'>
+  ): Promise<UserProfile> => {
+    const colors = [
+      'bg-teal-600',
+      'bg-rose-600',
+      'bg-indigo-600',
+      'bg-sky-600',
+      'bg-emerald-600',
+      'bg-amber-600',
+    ];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    const generatedCode = `BN-${Math.floor(10000 + Math.random() * 90000)}`;
+
+    let generatedId = `profile-${Date.now()}`;
+    try {
+      const colRef = collection(db, 'patientProfiles');
+      const docRef = await addDoc(colRef, {
+        hoTen: data.hoTen,
+        namSinh: data.namSinh,
+        gioiTinh: data.gioiTinh,
+        nhomMau: data.nhomMau,
+        soDienThoai: data.soDienThoai,
+        maHoSo: generatedCode,
+        ghiChuSucKhoe: data.ghiChuSucKhoe || '',
+        avatarColor: data.avatarColor || randomColor,
+        createdAt: serverTimestamp(),
+      });
+      generatedId = docRef.id;
+    } catch (e) {
+      console.warn('Lỗi ghi profile vào Firestore:', e);
+    }
+
     const newProfile: UserProfile = {
       ...data,
-      id: `user-${Date.now()}`,
-      maHoSo: `BN-${Math.floor(10000 + Math.random() * 90000)}`,
+      id: generatedId,
+      maHoSo: generatedCode,
       avatarColor: data.avatarColor || randomColor,
     };
-    setProfiles((prev) => [...prev, newProfile]);
+
+    setProfiles((prev) => [newProfile, ...prev.filter((p) => p.id !== newProfile.id)]);
     setCurrentUser(newProfile);
     setIsAuthModalOpen(false);
     return newProfile;
   };
 
-  // Tải danh sách phiếu đã lưu từ Firestore
+  // Xóa hồ sơ khỏi Firestore và bộ nhớ
+  const deleteProfile = async (profileId: string): Promise<void> => {
+    try {
+      await deleteDoc(doc(db, 'patientProfiles', profileId));
+    } catch (e) {
+      console.warn('Lỗi xóa hồ sơ từ Firestore:', e);
+    }
+
+    setProfiles((prev) => {
+      const remaining = prev.filter((p) => p.id !== profileId);
+      if (currentUser?.id === profileId) {
+        setCurrentUser(remaining.length > 0 ? remaining[0] : null);
+      }
+      return remaining;
+    });
+  };
+
+  // Nạp danh sách hồ sơ từ Cloud Firestore
+  const loadProfilesFromFirestore = async () => {
+    setIsLoadingProfiles(true);
+    try {
+      const colRef = collection(db, 'patientProfiles');
+      const snapshot = await getDocs(colRef);
+      const loaded: UserProfile[] = [];
+
+      snapshot.forEach((docSnap) => {
+        const d = docSnap.data();
+        // Loại bỏ bất kỳ doc nào mang id giả
+        if (docSnap.id === 'user-1' || docSnap.id === 'user-2' || docSnap.id === 'user-3') return;
+
+        loaded.push({
+          id: docSnap.id,
+          hoTen: d.hoTen || '',
+          namSinh: d.namSinh || 1990,
+          gioiTinh: d.gioiTinh || 'Nam',
+          nhomMau: d.nhomMau || 'O+',
+          soDienThoai: d.soDienThoai || '',
+          maHoSo: d.maHoSo || `BN-${docSnap.id.slice(0, 5)}`,
+          ghiChuSucKhoe: d.ghiChuSucKhoe || '',
+          avatarColor: d.avatarColor || 'bg-teal-600',
+        });
+      });
+
+      // Cập nhật danh sách từ database
+      setProfiles(loaded);
+
+      // Cập nhật active user
+      if (loaded.length > 0) {
+        setCurrentUser((prev) => {
+          if (!prev || !loaded.some((p) => p.id === prev.id)) {
+            return loaded[0];
+          }
+          return prev;
+        });
+      } else {
+        setCurrentUser(null);
+      }
+    } catch (err) {
+      console.warn('Không thể nạp hồ sơ từ Firestore:', err);
+    } finally {
+      setIsLoadingProfiles(false);
+    }
+  };
+
+  // Tải danh sách phiếu đã lưu từ Firestore (Không tự tạo dữ liệu giả)
   const loadSavedReports = async () => {
     setIsLoadingReports(true);
     try {
       const colRef = collection(db, 'savedReports');
       const snapshot = await getDocs(colRef);
       const reports: SavedReport[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data();
         reports.push({
-          id: doc.id,
+          id: docSnap.id,
+          patientId: data.patientId || '',
+          patientName: data.patientName || data.benhNhan || '',
           ngayXetNghiem: data.ngayXetNghiem || '',
           nhanPhieu: data.nhanPhieu || `Phiếu xét nghiệm ${data.ngayXetNghiem}`,
           chiSo: Array.isArray(data.chiSo) ? data.chiSo : [],
@@ -219,11 +318,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       });
 
       setSavedReports(reports);
-
-      // Nếu collection rỗng, tự động seed Phiếu B
-      if (reports.length === 0) {
-        await seedInitialDataIfEmpty();
-      }
     } catch (err) {
       console.warn('Không thể nạp dữ liệu từ Firestore hoặc collection rỗng:', err);
     } finally {
@@ -231,39 +325,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   };
 
-  // Seed Phiếu B vào Firestore nếu savedReports rỗng
-  const seedInitialDataIfEmpty = async () => {
-    try {
-      const colRef = collection(db, 'savedReports');
-      const checkSnapshot = await getDocs(colRef);
-      if (checkSnapshot.empty) {
-        await addDoc(colRef, {
-          ngayXetNghiem: KICH_BAN_PHIEU_B.ngayXetNghiem,
-          nhanPhieu: KICH_BAN_PHIEU_B.nhanPhieu,
-          chiSo: KICH_BAN_PHIEU_B.chiSo,
-          createdAt: serverTimestamp(),
-        });
-        // Tải lại danh sách
-        const newSnapshot = await getDocs(colRef);
-        const seeded: SavedReport[] = [];
-        newSnapshot.forEach((doc) => {
-          const data = doc.data();
-          seeded.push({
-            id: doc.id,
-            ngayXetNghiem: data.ngayXetNghiem || '',
-            nhanPhieu: data.nhanPhieu || `Phiếu xét nghiệm ${data.ngayXetNghiem}`,
-            chiSo: Array.isArray(data.chiSo) ? data.chiSo : [],
-            createdAt: data.createdAt,
-          });
-        });
-        setSavedReports(seeded);
-      }
-    } catch (err) {
-      console.warn('Không thể seed dữ liệu mẫu vào Firestore:', err);
-    }
-  };
-
-  // Lưu 1 document vào Firestore (FR06)
+  // Lưu 1 document vào Firestore
   const saveReportToFirestore = async (reportData: {
     ngayXetNghiem: string;
     nhanPhieu: string;
@@ -272,6 +334,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     try {
       const colRef = collection(db, 'savedReports');
       const docRef = await addDoc(colRef, {
+        patientId: currentUser?.id || '',
+        patientName: currentUser?.hoTen || '',
         ngayXetNghiem: reportData.ngayXetNghiem,
         nhanPhieu: reportData.nhanPhieu,
         chiSo: reportData.chiSo,
@@ -305,9 +369,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  // Tự động tải danh sách phiếu từ Firestore khi khởi động
+  // Tự động tải danh sách phiếu và hồ sơ từ Firestore khi khởi động
   useEffect(() => {
     loadSavedReports();
+    loadProfilesFromFirestore();
   }, []);
 
   return (
@@ -325,16 +390,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         isLoadingReports,
         loadSavedReports,
         saveReportToFirestore,
-        seedInitialDataIfEmpty,
         compareSelectedIds,
         setCompareSelectedIds,
         toggleCompareSelect,
         currentUser,
         profiles,
+        isLoadingProfiles,
+        loadProfilesFromFirestore,
         switchProfile,
         loginUser,
         logoutUser,
         createProfile,
+        deleteProfile,
         isAuthModalOpen,
         setIsAuthModalOpen,
       }}

@@ -49,6 +49,8 @@ export interface ChiSoItem {
 
 export interface SavedReport {
   id?: string;
+  patientId?: string;
+  patientName?: string;
   ngayXetNghiem: string; // yyyy-mm-dd
   nhanPhieu: string;
   chiSo: ChiSoItem[];
@@ -664,41 +666,7 @@ export interface UserProfile {
   avatarColor?: string;
 }
 
-export const DANH_SACH_HO_SO_MAC_DINH: UserProfile[] = [
-  {
-    id: 'user-1',
-    hoTen: 'Nguyễn Văn A',
-    namSinh: 1994,
-    gioiTinh: 'Nam',
-    nhomMau: 'O+',
-    soDienThoai: '0912 345 678',
-    maHoSo: 'BN-88421',
-    ghiChuSucKhoe: 'Khám sức khỏe định kỳ hàng năm, huyết áp ổn định.',
-    avatarColor: 'bg-teal-600',
-  },
-  {
-    id: 'user-2',
-    hoTen: 'Trần Thị Mai',
-    namSinh: 1998,
-    gioiTinh: 'Nữ',
-    nhomMau: 'A+',
-    soDienThoai: '0987 654 321',
-    maHoSo: 'BN-88422',
-    ghiChuSucKhoe: 'Theo dõi chỉ số huyết sắc tố (HGB) và mức năng lượng.',
-    avatarColor: 'bg-rose-600',
-  },
-  {
-    id: 'user-3',
-    hoTen: 'Nguyễn Văn Hùng',
-    namSinh: 1964,
-    gioiTinh: 'Nam',
-    nhomMau: 'B+',
-    soDienThoai: '0903 112 233',
-    maHoSo: 'BN-88423',
-    ghiChuSucKhoe: 'Tiền sử tăng mỡ máu nhẹ, theo dõi đường huyết và creatinine 3 tháng/lần.',
-    avatarColor: 'bg-indigo-600',
-  },
-];
+export const DANH_SACH_HO_SO_MAC_DINH: UserProfile[] = [];
 
 /**
  * Đánh giá Thể trạng BMI & Nguy cơ Chuyển hóa

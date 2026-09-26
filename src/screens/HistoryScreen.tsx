@@ -41,21 +41,35 @@ export const HistoryScreen: React.FC = () => {
     toggleCompareSelect,
     setCurrentReport,
     setIsDirty,
+    currentUser,
   } = useApp();
 
   const [compareAlert, setCompareAlert] = useState<string | null>(null);
   const [searchFilter, setSearchFilter] = useState<string>('');
+  const [filterPatientOnly, setFilterPatientOnly] = useState<boolean>(true);
   const [printReportData, setPrintReportData] = useState<SavedReport | null>(null);
 
   const filteredReports = useMemo(() => {
-    if (!searchFilter.trim()) return savedReports;
+    let list = savedReports;
+
+    if (filterPatientOnly && currentUser) {
+      list = list.filter(
+        (r) =>
+          (r.patientId && r.patientId === currentUser.id) ||
+          (r.patientName && r.patientName.toLowerCase() === currentUser.hoTen.toLowerCase()) ||
+          (!r.patientId && currentUser.id === 'user-1')
+      );
+    }
+
+    if (!searchFilter.trim()) return list;
     const q = searchFilter.toLowerCase();
-    return savedReports.filter(
+    return list.filter(
       (r) =>
         r.ngayXetNghiem.toLowerCase().includes(q) ||
-        r.nhanPhieu.toLowerCase().includes(q)
+        r.nhanPhieu.toLowerCase().includes(q) ||
+        (r.patientName && r.patientName.toLowerCase().includes(q))
     );
-  }, [savedReports, searchFilter]);
+  }, [savedReports, searchFilter, filterPatientOnly, currentUser]);
 
   const handleStartCompare = () => {
     if (compareSelectedIds.length !== 2) {
@@ -123,6 +137,48 @@ export const HistoryScreen: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Thông tin bệnh nhân đang xem lịch sử */}
+      {currentUser && (
+        <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left shadow-xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-teal-600 text-white font-bold flex items-center justify-center text-sm shadow-xs shrink-0">
+              {currentUser.hoTen.split(' ').map((n) => n[0]).slice(-2).join('')}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500">Hồ sơ:</span>
+                <span className="font-bold text-slate-900 text-sm">{currentUser.hoTen}</span>
+                <span className="text-[10px] font-mono font-bold bg-teal-50 text-teal-800 px-2 py-0.5 rounded border border-teal-200">
+                  {currentUser.maHoSo}
+                </span>
+              </div>
+              <p className="text-xs text-slate-500">
+                {currentUser.gioiTinh} · {new Date().getFullYear() - currentUser.namSinh} tuổi · Nhóm máu: {currentUser.nhomMau}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setFilterPatientOnly(!filterPatientOnly)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                filterPatientOnly
+                  ? 'bg-teal-50 text-teal-800 border-teal-200'
+                  : 'bg-slate-100 text-slate-600 border-slate-200 hover:bg-slate-200'
+              }`}
+            >
+              {filterPatientOnly ? 'Chỉ bệnh nhân này' : 'Tất cả bệnh nhân'}
+            </button>
+            <button
+              onClick={() => navigate('/')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
+            >
+              Đổi hồ sơ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Thông báo kiểm tra số lượng khi bấm so sánh */}
       {compareAlert && (
