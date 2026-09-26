@@ -50,6 +50,7 @@ export const UploadScreen: React.FC = () => {
     setCurrentReport,
     setIsDirty,
     currentUser,
+    logoutUser,
   } = useApp();
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -190,12 +191,24 @@ export const UploadScreen: React.FC = () => {
             </span>
           </div>
 
-          <button
-            onClick={() => navigate('/')}
-            className="text-teal-800 font-semibold hover:underline cursor-pointer ml-2 shrink-0"
-          >
-            Đổi hồ sơ
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => navigate('/')}
+              className="text-teal-800 font-semibold hover:underline cursor-pointer"
+            >
+              Đổi hồ sơ
+            </button>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => {
+                logoutUser();
+                navigate('/');
+              }}
+              className="text-red-600 font-semibold hover:underline cursor-pointer"
+            >
+              Đóng hồ sơ
+            </button>
+          </div>
         </div>
       )}
 

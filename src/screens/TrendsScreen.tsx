@@ -425,16 +425,7 @@ export const TrendsScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Nút xem chi tiết chỉ số trong thư viện */}
-        <div className="flex justify-end pt-2">
-          <Link
-            to={`/indicator/${selectedMetric}`}
-            className="text-xs font-semibold text-teal-700 hover:text-teal-900 inline-flex items-center gap-1"
-          >
-            <span>Xem bách khoa chi tiết về chỉ số {selectedMetric}</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </Link>
-        </div>
+
       </div>
     </div>
   );

@@ -274,17 +274,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // Cập nhật danh sách từ database
       setProfiles(loaded);
 
-      // Cập nhật active user
-      if (loaded.length > 0) {
-        setCurrentUser((prev) => {
-          if (!prev || !loaded.some((p) => p.id === prev.id)) {
-            return loaded[0];
-          }
-          return prev;
-        });
-      } else {
-        setCurrentUser(null);
-      }
+      // Cập nhật active user: nếu chưa chọn hoặc đã đóng hồ sơ thì giữ nguyên null
+      setCurrentUser((prev) => {
+        if (!prev) return null;
+        const matching = loaded.find((p) => p.id === prev.id);
+        return matching || null;
+      });
     } catch (err) {
       console.warn('Không thể nạp hồ sơ từ Firestore:', err);
     } finally {

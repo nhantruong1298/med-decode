@@ -18,6 +18,7 @@ import {
   Loader2,
   CheckCircle2,
   UserCheck,
+  UserX,
 } from 'lucide-react';
 import Button from '../components/Button';
 import { useApp } from '../context/AppContext';
@@ -31,14 +32,15 @@ export const HomeScreen: React.FC = () => {
     switchProfile,
     createProfile,
     deleteProfile,
+    logoutUser,
     savedReports,
     setCurrentReport,
     setIsDirty,
     isLoadingProfiles,
   } = useApp();
 
-  // State quản lý xem danh sách hồ sơ hay xem chi tiết hồ sơ
-  const [activePatientDetailId, setActivePatientDetailId] = useState<string | null>(null);
+  // Cho phép chuyển đổi giữa xem danh sách tất cả hồ sơ và xem chi tiết hồ sơ đang chọn
+  const [isBrowsingList, setIsBrowsingList] = useState<boolean>(false);
 
   // State tìm kiếm & bộ lọc
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -55,11 +57,24 @@ export const HomeScreen: React.FC = () => {
   const [createError, setCreateError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Tìm hồ sơ đang chọn xem chi tiết
+  // Tìm hồ sơ đang chọn xem chi tiết:
+  // CHỈ hiển thị chi tiết khi currentUser khác null VÀ người dùng không đang chủ động duyệt danh sách
   const selectedPatient = useMemo(() => {
-    if (!activePatientDetailId) return null;
-    return profiles.find((p) => p.id === activePatientDetailId) || null;
-  }, [profiles, activePatientDetailId]);
+    if (!currentUser || isBrowsingList) return null;
+    return currentUser;
+  }, [currentUser, isBrowsingList]);
+
+  // Đóng hồ sơ đang chọn và quay lại màn hình chọn hồ sơ
+  const handleCloseProfile = () => {
+    logoutUser();
+    setIsBrowsingList(false);
+  };
+
+  // Chọn hồ sơ bệnh nhân
+  const handleSelectProfile = (profile: UserProfile) => {
+    switchProfile(profile.id);
+    setIsBrowsingList(false);
+  };
 
   // Đếm số lượng phiếu xét nghiệm theo từng bệnh nhân
   const patientReportCounts = useMemo(() => {
@@ -147,8 +162,9 @@ export const HomeScreen: React.FC = () => {
       setNewNotes('');
       setIsCreateModalOpen(false);
 
-      // Chuyển thẳng vào xem chi tiết của bệnh nhân vừa tạo
-      setActivePatientDetailId(created.id);
+      // Tự động chọn và xem chi tiết của bệnh nhân vừa tạo
+      switchProfile(created.id);
+      setIsBrowsingList(false);
     } catch (err: any) {
       setCreateError(err?.message || 'Không thể tạo hồ sơ. Vui lòng thử lại.');
     } finally {
@@ -164,16 +180,16 @@ export const HomeScreen: React.FC = () => {
     );
     if (confirmed) {
       await deleteProfile(profile.id);
-      if (activePatientDetailId === profile.id) {
-        setActivePatientDetailId(null);
+      if (currentUser?.id === profile.id) {
+        logoutUser();
       }
+      setIsBrowsingList(false);
     }
   };
 
   // Mở chi tiết hồ sơ bệnh nhân
   const handleOpenDetail = (profile: UserProfile) => {
-    switchProfile(profile.id);
-    setActivePatientDetailId(profile.id);
+    handleSelectProfile(profile);
   };
 
   // Nhanh: Chọn ảnh xét nghiệm cho bệnh nhân
@@ -220,19 +236,29 @@ export const HomeScreen: React.FC = () => {
 
     return (
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Nút quay lại danh sách hồ sơ */}
+        {/* Nút quay lại danh sách hồ sơ & Đóng hồ sơ */}
         <div className="flex items-center justify-between">
           <button
-            onClick={() => setActivePatientDetailId(null)}
+            onClick={() => setIsBrowsingList(true)}
             className="inline-flex items-center gap-2 text-sm font-semibold text-[#0F766E] hover:text-[#0D655E] hover:underline cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
-            <span>Quay lại danh sách tất cả hồ sơ</span>
+            <span>Xem danh sách tất cả hồ sơ</span>
           </button>
 
-          <span className="text-xs text-slate-500 font-mono">
-            Mã hồ sơ: <strong className="text-slate-800">{selectedPatient.maHoSo}</strong>
-          </span>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleCloseProfile}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
+              title="Đóng hồ sơ hiện tại và quay về màn hình chọn hồ sơ"
+            >
+              <UserX className="w-3.5 h-3.5" />
+              <span>Đóng hồ sơ</span>
+            </button>
+            <span className="text-xs text-slate-500 font-mono hidden sm:inline">
+              Mã hồ sơ: <strong className="text-slate-800">{selectedPatient.maHoSo}</strong>
+            </span>
+          </div>
         </div>
 
         {/* Khối thông tin chi tiết hồ sơ bệnh nhân */}
@@ -287,8 +313,18 @@ export const HomeScreen: React.FC = () => {
 
             <div className="flex items-center gap-2 self-start sm:self-center">
               <button
-                onClick={() => setActivePatientDetailId(null)}
+                onClick={handleCloseProfile}
+                className="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold border border-red-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                title="Đóng hồ sơ hiện tại và quay về màn chọn hồ sơ"
+              >
+                <UserX className="w-4 h-4" />
+                <span>Đóng hồ sơ</span>
+              </button>
+
+              <button
+                onClick={() => setIsBrowsingList(true)}
                 className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
+                title="Xem danh sách tất cả hồ sơ"
               >
                 <UserCheck className="w-4 h-4 text-teal-700" />
                 <span>Đổi hồ sơ</span>
@@ -490,6 +526,51 @@ export const HomeScreen: React.FC = () => {
           </Button>
         </div>
       </div>
+
+      {/* Banner thông báo hồ sơ đang mở nếu người dùng quay ra duyệt danh sách */}
+      {currentUser && (
+        <div className="bg-teal-50/90 border border-teal-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl text-white font-bold flex items-center justify-center text-sm shadow-2xs shrink-0 ${
+                currentUser.avatarColor || 'bg-teal-600'
+              }`}
+            >
+              {currentUser.hoTen
+                .split(' ')
+                .map((n) => n[0])
+                .slice(-2)
+                .join('')}
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-500 font-medium">Đang chọn:</span>
+                <strong className="text-slate-900 text-sm">{currentUser.hoTen}</strong>
+                <span className="font-mono text-teal-800 text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-teal-200">
+                  {currentUser.maHoSo}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Chức năng Đọc phiếu & Lịch sử đang khả dụng trên thanh điều hướng bên trái.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsBrowsingList(false)}
+              className="px-3.5 py-1.5 rounded-xl bg-[#0F766E] hover:bg-[#0D655E] text-white text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+            >
+              Vào lại chi tiết
+            </button>
+            <button
+              onClick={handleCloseProfile}
+              className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold border border-red-200 transition-colors cursor-pointer"
+            >
+              Đóng hồ sơ
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ĐANG TẢI DỮ LIỆU TỪ FIRESTORE */}
       {isLoadingProfiles && profiles.length === 0 && (

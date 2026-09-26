@@ -42,6 +42,7 @@ export const HistoryScreen: React.FC = () => {
     setCurrentReport,
     setIsDirty,
     currentUser,
+    logoutUser,
   } = useApp();
 
   const [compareAlert, setCompareAlert] = useState<string | null>(null);
@@ -175,6 +176,15 @@ export const HistoryScreen: React.FC = () => {
               className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-100 border border-slate-200 transition-colors cursor-pointer"
             >
               Đổi hồ sơ
+            </button>
+            <button
+              onClick={() => {
+                logoutUser();
+                navigate('/');
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-red-600 hover:bg-red-50 border border-red-200 transition-colors cursor-pointer"
+            >
+              Đóng hồ sơ
             </button>
           </div>
         </div>
