@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AppProvider, useApp } from './context/AppContext';
 import { AppLayout } from './components/Layout';
+import { ScrollToTop } from './components/ScrollToTop';
 import HomeScreen from './screens/HomeScreen';
 import UploadScreen from './screens/UploadScreen';
 import VerifyScreen from './screens/VerifyScreen';
@@ -24,6 +25,7 @@ export function App() {
   return (
     <AppProvider>
       <BrowserRouter>
+        <ScrollToTop />
         <AppLayout>
           <Routes>
             {/* 1. Trang chủ: Danh sách hồ sơ bệnh nhân */}

@@ -10,9 +10,6 @@ import {
   Scan,
   Eye,
   Bot,
-  FileText,
-  ChevronDown,
-  ChevronUp,
   Image as ImageIcon,
 } from 'lucide-react';
 import Button from '../components/Button';
@@ -50,14 +47,12 @@ export const UploadScreen: React.FC = () => {
     setCurrentReport,
     setIsDirty,
     currentUser,
-    logoutUser,
   } = useApp();
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [processingStatusText, setProcessingStatusText] = useState<string>('');
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [aiScanResult, setAiScanResult] = useState<AIScanResultData | null>(null);
-  const [showRawJson, setShowRawJson] = useState<boolean>(false);
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
 
   // Xử lý khi người dùng chọn file ảnh từ máy
@@ -189,25 +184,6 @@ export const UploadScreen: React.FC = () => {
             <span className="text-slate-500 hidden sm:inline">
               ({currentUser.gioiTinh}, {new Date().getFullYear() - currentUser.namSinh} tuổi)
             </span>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => navigate('/')}
-              className="text-teal-800 font-semibold hover:underline cursor-pointer"
-            >
-              Đổi hồ sơ
-            </button>
-            <span className="text-slate-300">|</span>
-            <button
-              onClick={() => {
-                logoutUser();
-                navigate('/');
-              }}
-              className="text-red-600 font-semibold hover:underline cursor-pointer"
-            >
-              Đóng hồ sơ
-            </button>
           </div>
         </div>
       )}
@@ -343,24 +319,6 @@ export const UploadScreen: React.FC = () => {
               <span>Ghi chú AI: {aiScanResult.ghiChu}</span>
             </div>
           )}
-
-          {/* Nút xem dữ liệu thô JSON */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowRawJson(!showRawJson)}
-              className="text-xs text-teal-800 font-medium inline-flex items-center gap-1 hover:underline cursor-pointer"
-            >
-              <FileText className="w-3.5 h-3.5" />
-              <span>{showRawJson ? 'Ẩn' : 'Xem'} dữ liệu JSON thô do AI trích xuất</span>
-              {showRawJson ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-            </button>
-            {showRawJson && (
-              <pre className="mt-2 p-3 bg-slate-900 text-slate-200 text-[11px] font-mono rounded-xl overflow-x-auto max-h-48">
-                {JSON.stringify(aiScanResult, null, 2)}
-              </pre>
-            )}
-          </div>
 
           {/* Nút hành động tiếp tục sang màn hình Verify */}
           <div className="pt-2 flex flex-col sm:flex-row gap-3">

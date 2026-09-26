@@ -11,14 +11,11 @@ import {
   FileText,
   Calendar,
   Phone,
-  ArrowLeft,
   X,
   Eye,
   Trash2,
   Loader2,
   CheckCircle2,
-  UserCheck,
-  UserX,
 } from 'lucide-react';
 import Button from '../components/Button';
 import { useApp } from '../context/AppContext';
@@ -39,12 +36,9 @@ export const HomeScreen: React.FC = () => {
     isLoadingProfiles,
   } = useApp();
 
-  // Cho phép chuyển đổi giữa xem danh sách tất cả hồ sơ và xem chi tiết hồ sơ đang chọn
-  const [isBrowsingList, setIsBrowsingList] = useState<boolean>(false);
-
   // State tìm kiếm & bộ lọc
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [genderFilter, setGenderFilter] = useState<'ALL' | 'Nam' | 'Nữ' | 'HAS_REPORTS'>('ALL');
+  const [genderFilter, setGenderFilter] = useState<'ALL' | 'Nam' | 'Nữ'>('ALL');
 
   // Modal tạo hồ sơ mới
   const [isCreateModalOpen, setIsCreateModalOpen] = useState<boolean>(false);
@@ -57,23 +51,12 @@ export const HomeScreen: React.FC = () => {
   const [createError, setCreateError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Tìm hồ sơ đang chọn xem chi tiết:
-  // CHỈ hiển thị chi tiết khi currentUser khác null VÀ người dùng không đang chủ động duyệt danh sách
-  const selectedPatient = useMemo(() => {
-    if (!currentUser || isBrowsingList) return null;
-    return currentUser;
-  }, [currentUser, isBrowsingList]);
-
-  // Đóng hồ sơ đang chọn và quay lại màn hình chọn hồ sơ
-  const handleCloseProfile = () => {
-    logoutUser();
-    setIsBrowsingList(false);
-  };
+  // Hồ sơ đang chọn để xem chi tiết (chỉ có khi đã chọn currentUser)
+  const selectedPatient = currentUser ?? null;
 
   // Chọn hồ sơ bệnh nhân
   const handleSelectProfile = (profile: UserProfile) => {
     switchProfile(profile.id);
-    setIsBrowsingList(false);
   };
 
   // Đếm số lượng phiếu xét nghiệm theo từng bệnh nhân
@@ -111,17 +94,28 @@ export const HomeScreen: React.FC = () => {
         p.hoTen.toLowerCase().includes(q) ||
         p.soDienThoai.replace(/\s+/g, '').includes(q.replace(/\s+/g, '')) ||
         p.maHoSo.toLowerCase().includes(q) ||
-        p.nhomMau.toLowerCase().includes(q);
+        p.nhomMau.toLowerCase().includes(q) ||
+        String(p.namSinh).includes(q);
 
       if (!matchSearch) return false;
 
-      if (genderFilter === 'Nam') return p.gioiTinh === 'Nam';
-      if (genderFilter === 'Nữ') return p.gioiTinh === 'Nữ';
-      if (genderFilter === 'HAS_REPORTS') return (patientReportCounts.counts[p.id] || 0) > 0;
+      if (genderFilter === 'Nam' && p.gioiTinh !== 'Nam') return false;
+      if (genderFilter === 'Nữ' && p.gioiTinh !== 'Nữ') return false;
 
       return true;
     });
-  }, [profiles, searchQuery, genderFilter, patientReportCounts]);
+  }, [profiles, searchQuery, genderFilter]);
+
+  // Đếm số lượng hồ sơ theo giới tính để hiển thị lên các nút bộ lọc
+  const filterCounts = useMemo(() => {
+    let nam = 0;
+    let nu = 0;
+    profiles.forEach((p) => {
+      if (p.gioiTinh === 'Nam') nam += 1;
+      if (p.gioiTinh === 'Nữ') nu += 1;
+    });
+    return { nam, nu };
+  }, [profiles]);
 
   // Xử lý tạo hồ sơ mới thật lưu vào Firestore
   const handleCreateSubmit = async (e: React.FormEvent) => {
@@ -164,7 +158,6 @@ export const HomeScreen: React.FC = () => {
 
       // Tự động chọn và xem chi tiết của bệnh nhân vừa tạo
       switchProfile(created.id);
-      setIsBrowsingList(false);
     } catch (err: any) {
       setCreateError(err?.message || 'Không thể tạo hồ sơ. Vui lòng thử lại.');
     } finally {
@@ -183,7 +176,6 @@ export const HomeScreen: React.FC = () => {
       if (currentUser?.id === profile.id) {
         logoutUser();
       }
-      setIsBrowsingList(false);
     }
   };
 
@@ -236,31 +228,6 @@ export const HomeScreen: React.FC = () => {
 
     return (
       <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
-        {/* Nút quay lại danh sách hồ sơ & Đóng hồ sơ */}
-        <div className="flex items-center justify-between">
-          <button
-            onClick={() => setIsBrowsingList(true)}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#0F766E] hover:text-[#0D655E] hover:underline cursor-pointer"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Xem danh sách tất cả hồ sơ</span>
-          </button>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleCloseProfile}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-red-600 hover:text-red-700 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-xl cursor-pointer transition-colors"
-              title="Đóng hồ sơ hiện tại và quay về màn hình chọn hồ sơ"
-            >
-              <UserX className="w-3.5 h-3.5" />
-              <span>Đóng hồ sơ</span>
-            </button>
-            <span className="text-xs text-slate-500 font-mono hidden sm:inline">
-              Mã hồ sơ: <strong className="text-slate-800">{selectedPatient.maHoSo}</strong>
-            </span>
-          </div>
-        </div>
-
         {/* Khối thông tin chi tiết hồ sơ bệnh nhân */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 text-left relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -312,24 +279,6 @@ export const HomeScreen: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-2 self-start sm:self-center">
-              <button
-                onClick={handleCloseProfile}
-                className="px-3.5 py-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold border border-red-200 transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                title="Đóng hồ sơ hiện tại và quay về màn chọn hồ sơ"
-              >
-                <UserX className="w-4 h-4" />
-                <span>Đóng hồ sơ</span>
-              </button>
-
-              <button
-                onClick={() => setIsBrowsingList(true)}
-                className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
-                title="Xem danh sách tất cả hồ sơ"
-              >
-                <UserCheck className="w-4 h-4 text-teal-700" />
-                <span>Đổi hồ sơ</span>
-              </button>
-
               <button
                 onClick={() => handleDeleteProfile(selectedPatient)}
                 className="p-2 rounded-xl bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold transition-colors border border-red-200 cursor-pointer"
@@ -527,50 +476,6 @@ export const HomeScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Banner thông báo hồ sơ đang mở nếu người dùng quay ra duyệt danh sách */}
-      {currentUser && (
-        <div className="bg-teal-50/90 border border-teal-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-left shadow-2xs">
-          <div className="flex items-center gap-3">
-            <div
-              className={`w-10 h-10 rounded-xl text-white font-bold flex items-center justify-center text-sm shadow-2xs shrink-0 ${
-                currentUser.avatarColor || 'bg-teal-600'
-              }`}
-            >
-              {currentUser.hoTen
-                .split(' ')
-                .map((n) => n[0])
-                .slice(-2)
-                .join('')}
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-slate-500 font-medium">Đang chọn:</span>
-                <strong className="text-slate-900 text-sm">{currentUser.hoTen}</strong>
-                <span className="font-mono text-teal-800 text-[11px] font-bold bg-white px-2 py-0.5 rounded border border-teal-200">
-                  {currentUser.maHoSo}
-                </span>
-              </div>
-              <p className="text-[11px] text-slate-500">
-                Chức năng Đọc phiếu & Lịch sử đang khả dụng trên thanh điều hướng bên trái.
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              onClick={() => setIsBrowsingList(false)}
-              className="px-3.5 py-1.5 rounded-xl bg-[#0F766E] hover:bg-[#0D655E] text-white text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
-            >
-              Vào lại chi tiết
-            </button>
-            <button
-              onClick={handleCloseProfile}
-              className="px-3.5 py-1.5 rounded-xl bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold border border-red-200 transition-colors cursor-pointer"
-            >
-              Đóng hồ sơ
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* ĐANG TẢI DỮ LIỆU TỪ FIRESTORE */}
       {isLoadingProfiles && profiles.length === 0 && (
@@ -607,7 +512,7 @@ export const HomeScreen: React.FC = () => {
               }}
               className="shadow-md shadow-teal-900/10 text-base py-3"
             >
-              + Tạo hồ sơ bệnh nhân đầu tiên
+              Tạo hồ sơ bệnh nhân đầu tiên
             </Button>
           </div>
         </div>
@@ -624,9 +529,11 @@ export const HomeScreen: React.FC = () => {
                 <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 <input
                   type="text"
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm theo tên bệnh nhân, số điện thoại, mã hồ sơ (VD: BN-88421)..."
+                  placeholder="Tìm theo tên, năm sinh, số điện thoại, mã hồ sơ (VD: BN-88421)..."
                   className="w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#0F766E] focus:bg-white transition-all"
                 />
                 {searchQuery && (
@@ -639,48 +546,30 @@ export const HomeScreen: React.FC = () => {
                 )}
               </div>
 
-              {/* Bộ lọc loại */}
-              <div className="flex items-center gap-1.5 overflow-x-auto shrink-0 text-xs">
-                <button
-                  onClick={() => setGenderFilter('ALL')}
-                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
-                    genderFilter === 'ALL'
-                      ? 'bg-teal-700 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Tất cả ({profiles.length})
-                </button>
-                <button
-                  onClick={() => setGenderFilter('Nam')}
-                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
-                    genderFilter === 'Nam'
-                      ? 'bg-teal-700 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Nam
-                </button>
-                <button
-                  onClick={() => setGenderFilter('Nữ')}
-                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
-                    genderFilter === 'Nữ'
-                      ? 'bg-teal-700 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Nữ
-                </button>
-                <button
-                  onClick={() => setGenderFilter('HAS_REPORTS')}
-                  className={`px-3 py-2 rounded-xl font-medium transition-colors cursor-pointer shrink-0 ${
-                    genderFilter === 'HAS_REPORTS'
-                      ? 'bg-teal-700 text-white shadow-xs'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  Có kết quả
-                </button>
+              {/* Bộ lọc: 2 nhóm tách biệt - Giới tính (chọn 1) và Trạng thái (bật/tắt) */}
+              <div className="flex items-center gap-2 overflow-x-auto shrink-0 text-xs">
+                {/* Nhóm 1: Giới tính - dạng segmented control, chỉ chọn 1 giá trị */}
+                <div className="flex items-center gap-0.5 bg-slate-100 rounded-xl p-0.5 shrink-0">
+                  {(
+                    [
+                      { key: 'ALL' as const, label: 'Tất cả', count: profiles.length },
+                      { key: 'Nam' as const, label: 'Nam', count: filterCounts.nam },
+                      { key: 'Nữ' as const, label: 'Nữ', count: filterCounts.nu },
+                    ]
+                  ).map((opt) => (
+                    <button
+                      key={opt.key}
+                      onClick={() => setGenderFilter(opt.key)}
+                      className={`px-2.5 py-1.5 rounded-lg font-medium transition-colors cursor-pointer shrink-0 ${
+                        genderFilter === opt.key
+                          ? 'bg-white text-teal-700 shadow-xs'
+                          : 'text-slate-500 hover:text-slate-700'
+                      }`}
+                    >
+                      {opt.label} ({opt.count})
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
@@ -907,6 +796,8 @@ export const HomeScreen: React.FC = () => {
                 <input
                   type="text"
                   required
+                  autoCapitalize="off"
+                  autoCorrect="off"
                   placeholder="Ví dụ: Nguyễn Thị Hoa"
                   value={newHoTen}
                   onChange={(e) => setNewHoTen(e.target.value)}

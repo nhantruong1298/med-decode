@@ -8,12 +8,11 @@ import {
   Users,
   GitCompare,
   LogOut,
-  UserCheck,
-  Plus,
   Menu,
   X,
   ShieldCheck,
   Database,
+  Lock,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { AuthModal } from './AuthModal';
@@ -120,9 +119,9 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
         </Link>
       </div>
 
-      {/* 2. Thẻ thông tin bệnh nhân đang chọn */}
-      <div className="p-4 border-b border-slate-100 bg-slate-50/70">
-        {currentUser ? (
+      {/* 2. Thẻ thông tin bệnh nhân đang chọn (chỉ hiện khi đã chọn hồ sơ) */}
+      {currentUser && (
+        <div className="p-4 border-b border-slate-100 bg-slate-50/70">
           <div className="space-y-3">
             <div className="flex items-start gap-3">
               <div
@@ -148,55 +147,33 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </div>
 
             {/* Thao tác nhanh với hồ sơ */}
-            <div className="flex items-center gap-1.5 pt-1">
-              <button
-                type="button"
-                onClick={() => {
-                  navigate('/');
-                  setIsMobileMenuOpen(false);
-                }}
-                className="flex-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-medium flex items-center justify-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                title="Chọn hồ sơ khác"
-              >
-                <UserCheck className="w-3.5 h-3.5 text-teal-600" />
-                <span>Đổi hồ sơ</span>
-              </button>
-
+            <div className="pt-1">
               <button
                 type="button"
                 onClick={handleLogout}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-400 hover:text-red-600 text-xs transition-colors cursor-pointer shadow-2xs"
+                className="w-full px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 hover:bg-red-50 hover:border-red-200 text-slate-500 hover:text-red-600 text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-2xs"
                 title="Đóng hồ sơ hiện tại"
               >
                 <LogOut className="w-3.5 h-3.5" />
+                <span>Đóng hồ sơ</span>
               </button>
             </div>
           </div>
-        ) : (
-          <div className="p-3 bg-white rounded-xl border border-dashed border-teal-300 text-center space-y-2 shadow-2xs">
-            <div className="text-xs text-slate-600 font-medium">
-              Chưa chọn hồ sơ bệnh nhân
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                navigate('/');
-                setIsMobileMenuOpen(false);
-              }}
-              className="w-full py-1.5 px-3 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
-            >
-              <Users className="w-3.5 h-3.5" />
-              <span>Chọn hồ sơ</span>
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* 3. Danh sách điều hướng chức năng bên trái */}
       <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
         <div className="px-3 pt-2 pb-1 text-[11px] font-bold text-slate-400 tracking-wider uppercase">
           Mục chức năng
         </div>
+
+        {!currentUser && (
+          <div className="mx-1 mb-1.5 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200 text-[11px] text-amber-800 font-medium flex items-center gap-1.5">
+            <Lock className="w-3 h-3 shrink-0" />
+            <span>Chọn hồ sơ bệnh nhân để mở khoá các mục bên dưới</span>
+          </div>
+        )}
 
         {navItems.map((item) => {
           const active = item.activeMatches(location.pathname);
@@ -230,11 +207,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 <span className="truncate">{item.label}</span>
               </div>
 
-              {isLocked && (
-                <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-normal shrink-0">
-                  Cần chọn BN
-                </span>
-              )}
+              {isLocked && <Lock className="w-3.5 h-3.5 text-slate-300 shrink-0" />}
 
               {active && !isLocked && (
                 <span className="w-1.5 h-4 bg-[#0F766E] rounded-full shrink-0" />
@@ -242,20 +215,6 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
             </Link>
           );
         })}
-
-        {/* Nút hành động nổi bật khi đã có bệnh nhân */}
-        {currentUser && (
-          <div className="pt-4 px-1">
-            <Link
-              to="/upload"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="w-full py-2.5 px-3 rounded-xl bg-gradient-to-r from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 text-white text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tải phiếu xét nghiệm</span>
-            </Link>
-          </div>
-        )}
       </div>
 
       {/* 4. Footer của sidebar: Trạng thái hệ thống */}

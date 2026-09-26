@@ -29,11 +29,13 @@ import {
  */
 export const VerifyScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { currentImage, currentReport, setCurrentReport, isDirty, setIsDirty } = useApp();
+  const { currentImage, currentReport, setCurrentReport, isDirty, setIsDirty, saveReportToFirestore } = useApp();
 
   const [zoomLevel, setZoomLevel] = useState<number>(1);
   const [showExitConfirm, setShowExitConfirm] = useState<boolean>(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string>('');
 
   // Nếu người dùng truy cập trực tiếp khi chưa có currentReport
   if (!currentReport) {
@@ -83,8 +85,9 @@ export const VerifyScreen: React.FC = () => {
     }
   };
 
-  // Xác nhận thông tin
-  const handleConfirm = () => {
+  // Xác nhận thông tin: kiểm tra dữ liệu rồi lưu thẳng vào Firestore
+  const handleConfirm = async () => {
+    setSaveError('');
     const newErrors: { [key: string]: string } = {};
 
     if (!currentReport.ngayXetNghiem) {
@@ -113,7 +116,21 @@ export const VerifyScreen: React.FC = () => {
       return;
     }
 
-    // Chuyển sang màn hình Dashboard Kết quả
+    // Lưu thẳng vào Firestore ngay khi xác nhận — Dashboard/Lịch sử chỉ để xem lại
+    setIsSaving(true);
+    const res = await saveReportToFirestore({
+      ngayXetNghiem: currentReport.ngayXetNghiem,
+      nhanPhieu: currentReport.nhanPhieu || `Phiếu xét nghiệm ${currentReport.ngayXetNghiem}`,
+      chiSo: currentReport.chiSo,
+    });
+    setIsSaving(false);
+
+    if (!res.success) {
+      setSaveError('Chưa lưu được kết quả vào lịch sử. Vui lòng kiểm tra kết nối mạng và thử lại.');
+      return;
+    }
+
+    setIsDirty(false);
     navigate('/dashboard');
   };
 
@@ -129,25 +146,15 @@ export const VerifyScreen: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       {/* Tiêu đề & nút quay lại */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
-        <div>
-          <button
-            onClick={handleBack}
-            className="inline-flex items-center gap-1.5 text-xs text-[#0F766E] hover:underline mb-1 cursor-pointer font-medium"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Quay lại tải ảnh</span>
-          </button>
-          <h1 className="text-2xl font-bold text-[#0F172A]">Kiểm tra thông tin phiếu</h1>
-        </div>
-
-        <Button
-          variant="primary"
-          icon={<CheckCircle2 className="w-4 h-4" />}
-          onClick={handleConfirm}
+      <div className="border-b border-slate-200 pb-4">
+        <button
+          onClick={handleBack}
+          className="inline-flex items-center gap-1.5 text-xs text-[#0F766E] hover:underline mb-1 cursor-pointer font-medium"
         >
-          Xác nhận thông tin
-        </Button>
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Quay lại tải ảnh</span>
+        </button>
+        <h1 className="text-2xl font-bold text-[#0F172A]">Kiểm tra thông tin phiếu</h1>
       </div>
 
       {/* Thông báo bắt buộc đối chiếu (dùng đúng nguyên văn mục 7) */}
@@ -160,6 +167,14 @@ export const VerifyScreen: React.FC = () => {
           </p>
         </div>
       </div>
+
+      {/* Thông báo lưu thất bại khi bấm Xác nhận thông tin */}
+      {saveError && (
+        <div className="rounded-lg border border-red-200 bg-red-50/90 p-4 text-left flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-[#B91C1C] shrink-0 mt-0.5" />
+          <p className="text-sm font-semibold text-[#B91C1C]">{saveError}</p>
+        </div>
+      )}
 
       {/* Bố cục 2 cột cạnh nhau: Ảnh gốc & Danh sách trường dữ liệu */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -351,6 +366,8 @@ export const VerifyScreen: React.FC = () => {
               size="lg"
               icon={<CheckCircle2 className="w-5 h-5" />}
               onClick={handleConfirm}
+              isLoading={isSaving}
+              loadingText="Đang lưu kết quả..."
             >
               Xác nhận thông tin
             </Button>

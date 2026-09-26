@@ -2,11 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Calendar,
-  Save,
-  Check,
-  AlertCircle,
   History,
-  ArrowLeft,
   Filter,
   CheckCircle2,
   Clock,
@@ -37,12 +33,8 @@ import {
  */
 export const DashboardScreen: React.FC = () => {
   const navigate = useNavigate();
-  const { currentReport, saveReportToFirestore } = useApp();
+  const { currentReport } = useApp();
 
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
-  const [saveErrorMsg, setSaveErrorMsg] = useState<string | null>(null);
-  const [hasSaved, setHasSaved] = useState<boolean>(false);
   const [showPrintModal, setShowPrintModal] = useState<boolean>(false);
 
   // Bộ lọc tương tác
@@ -72,29 +64,6 @@ export const DashboardScreen: React.FC = () => {
 
   const percentNormal = Math.round((summaryCounts.normal / currentReport.chiSo.length) * 100);
 
-  const handleSaveToFirestore = async () => {
-    setIsSaving(true);
-    setSaveSuccessMsg(null);
-    setSaveErrorMsg(null);
-
-    const res = await saveReportToFirestore({
-      ngayXetNghiem: currentReport.ngayXetNghiem,
-      nhanPhieu: currentReport.nhanPhieu || `Phiếu xét nghiệm ${currentReport.ngayXetNghiem}`,
-      chiSo: currentReport.chiSo,
-    });
-
-    setIsSaving(false);
-
-    if (res.success) {
-      setSaveSuccessMsg('Đã lưu kết quả vào lịch sử xét nghiệm.');
-      setHasSaved(true);
-    } else {
-      setSaveErrorMsg(
-        'Chưa lưu được kết quả. Thông tin bạn đã nhập vẫn được giữ trong phiên này.'
-      );
-    }
-  };
-
   // Lọc chỉ số theo Tab chuyên môn và Trạng thái
   const filteredIndicators = currentReport.chiSo.filter((item) => {
     const def = THU_VIEN_CHI_SO[item.ma];
@@ -116,13 +85,6 @@ export const DashboardScreen: React.FC = () => {
       {/* Header thanh điều hướng */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
-          <button
-            onClick={() => navigate('/verify')}
-            className="inline-flex items-center gap-1.5 text-xs text-[#0F766E] hover:underline mb-1 cursor-pointer font-medium"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Quay lại đối chiếu dữ liệu</span>
-          </button>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-[#0F172A]">Bảng kết quả xét nghiệm</h1>
           </div>
@@ -160,19 +122,6 @@ export const DashboardScreen: React.FC = () => {
             <span className="hidden sm:inline">Xem xu hướng</span>
           </button>
 
-          {/* Nút "Lưu kết quả" nổi bật (ghi vào Firestore) */}
-          <Button
-            variant={hasSaved ? 'outline' : 'primary'}
-            size="md"
-            isLoading={isSaving}
-            loadingText="Đang lưu..."
-            icon={hasSaved ? <Check className="w-4 h-4 text-emerald-600" /> : <Save className="w-4 h-4" />}
-            onClick={handleSaveToFirestore}
-            disabled={hasSaved}
-          >
-            {hasSaved ? 'Đã lưu Firestore' : 'Lưu kết quả'}
-          </Button>
-
           <Button
             variant="secondary"
             size="md"
@@ -184,54 +133,6 @@ export const DashboardScreen: React.FC = () => {
           </Button>
         </div>
       </div>
-
-      {/* Thông báo Lưu thành công */}
-      {saveSuccessMsg && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50/90 p-4 text-left flex items-start justify-between gap-3 animate-in fade-in">
-          <div className="flex items-start gap-3">
-            <div className="p-1 rounded-full bg-emerald-100 text-emerald-700 mt-0.5">
-              <Check className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-emerald-900">{saveSuccessMsg}</p>
-              <p className="text-xs text-emerald-700 mt-0.5">
-                Kết quả đã được đồng bộ vào Firestore. Bạn có thể mở Lịch sử để đối chiếu với các lần khám trước.
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate('/history')}
-            className="shrink-0 text-emerald-800 border-emerald-300 bg-white"
-          >
-            Xem lịch sử
-          </Button>
-        </div>
-      )}
-
-      {/* Thông báo Lưu thất bại */}
-      {saveErrorMsg && (
-        <div className="rounded-lg border border-red-200 bg-red-50/90 p-4 text-left flex items-start justify-between gap-3 animate-in fade-in">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-[#B91C1C] shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-semibold text-[#B91C1C]">{saveErrorMsg}</p>
-              <p className="text-xs text-slate-700 mt-0.5">
-                Vui lòng kiểm tra lại kết nối mạng và thử bấm &quot;Lưu kết quả&quot; lần nữa.
-              </p>
-            </div>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleSaveToFirestore}
-            className="shrink-0 text-[#B91C1C] border-red-300 bg-white"
-          >
-            Thử lại
-          </Button>
-        </div>
-      )}
 
       {/* Card Thống kê nhanh trạng thái - hỗ trợ lọc nhanh khi click */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

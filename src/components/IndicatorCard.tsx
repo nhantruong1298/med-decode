@@ -55,8 +55,8 @@ export const IndicatorCard: React.FC<IndicatorCardProps> = ({
         <div className="absolute top-0 left-0 right-0 h-1 bg-emerald-500/60" />
       )}
 
-      <div className="flex items-start justify-between gap-3">
-        <div className="space-y-1">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="space-y-1 min-w-0 flex-1">
           {/* Nhóm chỉ số nhỏ */}
           {def?.nhom && (
             <span className="text-[11px] font-medium text-slate-400 block tracking-wide">

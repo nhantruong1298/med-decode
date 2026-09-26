@@ -9,33 +9,34 @@ import {
   ChevronRight,
   Database,
   CheckCircle2,
-  Sparkles,
   ArrowLeft,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import {
   THU_VIEN_CHI_SO,
   DANH_SACH_MA_CHI_SO,
-  DU_LIEU_MAU_XU_HUONG_1_NAM,
   SavedReport,
 } from '../data/labDictionary';
 
 export const TrendsScreen: React.FC = () => {
-  const { savedReports } = useApp();
+  const { savedReports, currentUser } = useApp();
   const [selectedMetric, setSelectedMetric] = useState<string>('GLU');
-  const [useDemoTimeline, setUseDemoTimeline] = useState<boolean>(true);
 
-  // Chọn nguồn dữ liệu: nếu người dùng bật demo hoặc chưa có đủ >= 2 phiếu trong Firestore
+  // savedReports chứa phiếu của TẤT CẢ bệnh nhân trong Firestore -> phải lọc theo bệnh nhân đang chọn
+  const patientReports = useMemo(() => {
+    if (!currentUser) return [];
+    return savedReports.filter(
+      (r) =>
+        (r.patientId && r.patientId === currentUser.id) ||
+        (r.patientName && r.patientName.toLowerCase() === currentUser.hoTen.toLowerCase())
+    );
+  }, [savedReports, currentUser]);
+
   const activeReports: SavedReport[] = useMemo(() => {
-    if (useDemoTimeline || savedReports.length < 2) {
-      return [...DU_LIEU_MAU_XU_HUONG_1_NAM].sort(
-        (a, b) => new Date(a.ngayXetNghiem).getTime() - new Date(b.ngayXetNghiem).getTime()
-      );
-    }
-    return [...savedReports].sort(
+    return [...patientReports].sort(
       (a, b) => new Date(a.ngayXetNghiem).getTime() - new Date(b.ngayXetNghiem).getTime()
     );
-  }, [useDemoTimeline, savedReports]);
+  }, [patientReports]);
 
   const def = THU_VIEN_CHI_SO[selectedMetric];
 
@@ -171,30 +172,10 @@ export const TrendsScreen: React.FC = () => {
           </p>
         </div>
 
-        {/* Nút chuyển đổi Demo timeline */}
-        <div className="bg-white p-1 rounded-xl border border-slate-200 shadow-xs flex items-center shrink-0">
-          <button
-            onClick={() => setUseDemoTimeline(true)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-              useDemoTimeline
-                ? 'bg-teal-50 text-[#0F766E] border border-teal-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Sparkles className="w-3.5 h-3.5 text-teal-600" />
-            <span>Mẫu theo dõi 1 năm</span>
-          </button>
-          <button
-            onClick={() => setUseDemoTimeline(false)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
-              !useDemoTimeline
-                ? 'bg-teal-50 text-[#0F766E] border border-teal-200'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            <Database className="w-3.5 h-3.5 text-slate-500" />
-            <span>Dữ liệu Firestore ({savedReports.length} phiếu)</span>
-          </button>
+        {/* Tổng số phiếu đã lưu của bệnh nhân đang chọn */}
+        <div className="bg-white px-3.5 py-2 rounded-xl border border-slate-200 shadow-xs flex items-center gap-1.5 shrink-0 text-xs font-semibold text-[#0F766E]">
+          <Database className="w-3.5 h-3.5 text-slate-500" />
+          <span>Tổng {patientReports.length} phiếu</span>
         </div>
       </div>
 
@@ -241,7 +222,10 @@ export const TrendsScreen: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-900 mt-1">
               {def?.ma} — {def?.tenDayDu}
             </h2>
-            <p className="text-xs text-slate-500 mt-0.5">
+            {def?.giaiThich && (
+              <p className="text-xs text-slate-600 mt-1 max-w-md">{def.giaiThich}</p>
+            )}
+            <p className="text-xs text-slate-500 mt-1.5">
               Khoảng tham chiếu chuẩn: <strong className="text-slate-700">{def?.khoangThamChieuText}</strong>
             </p>
           </div>

@@ -56,6 +56,8 @@ export const DictionaryScreen: React.FC = () => {
           <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
+            autoCapitalize="off"
+            autoCorrect="off"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo mã (GLU, WBC, AST...), tên tiếng Việt hoặc cơ quan..."
