@@ -47,18 +47,14 @@
 * Thư viện bách khoa tìm kiếm tức thì theo mã viết tắt, tên tiếng Việt hoặc cơ quan.
 * Bộ lọc theo nhóm chuyên môn kèm khoảng chuẩn chi tiết.
 
-### 8. Bộ Công Cụ Y Khoa Hữu Ích (`/tools`)
-* **Đổi đơn vị xét nghiệm**: Quy đổi 2 chiều giữa $\text{mmol/L} \leftrightarrow \text{mg/dL}$ (Glucose, Cholesterol), $\mu\text{mol/L} \leftrightarrow \text{mg/dL}$ (Creatinine), $\text{g/L} \leftrightarrow \text{g/dL}$ (Hb).
-* **Tính thể trạng BMI**: Đánh giá chỉ số khối cơ thể theo chuẩn WHO châu Á (WPRO) kèm lời khuyên dinh dưỡng.
-* **Cẩm nang trước khi lấy máu**: Checklist tương tác 6 bước chuẩn bị (nhịn ăn, uống nước, kiêng chất kích thích).
 
-### 9. Quản Lý Hồ Sơ Bệnh Nhân Cục Bộ (Local Auth)
+### 8. Quản Lý Hồ Sơ Bệnh Nhân Cục Bộ (Local Auth)
 * Quản lý nhiều hồ sơ bệnh nhân trên cùng trình duyệt (lưu tại `localStorage`).
 * Đổi nhanh tài khoản 1 chạm (Nguyễn Văn A, Trần Thị Mai, Nguyễn Văn Hùng...).
 * Thêm mới hồ sơ bệnh nhân kèm nhóm máu, năm sinh, số điện thoại.
 * Tự động đồng bộ thông tin bệnh nhân đang chọn lên phiếu xét nghiệm và bản in.
 
-### 10. Xuất Bản In & Phiếu Tóm Tắt Y Khoa (Print / PDF)
+### 9. Xuất Bản In & Phiếu Tóm Tắt Y Khoa (Print / PDF)
 * Modal xem trước bản in theo chuẩn hồ sơ y tế: có mã bệnh nhân, mã QR xác thực số, bảng 10 chỉ số phân nhóm và ô chữ ký bác sĩ.
 * Hỗ trợ lệnh in trực tiếp (`window.print()`) được tối ưu giao diện in ấn sạch đẹp.
 
