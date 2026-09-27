@@ -144,7 +144,7 @@ export const VerifyScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Tiêu đề & nút quay lại */}
       <div className="border-b border-slate-200 pb-4">
         <button

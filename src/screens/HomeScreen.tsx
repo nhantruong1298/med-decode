@@ -227,7 +227,7 @@ export const HomeScreen: React.FC = () => {
     const reportCount = currentPatientReports.length;
 
     return (
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
         {/* Khối thông tin chi tiết hồ sơ bệnh nhân */}
         <div className="bg-white rounded-2xl border border-slate-200/90 shadow-xs p-6 text-left relative overflow-hidden">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-5">
@@ -444,7 +444,7 @@ export const HomeScreen: React.FC = () => {
   // VIEW 1: DANH SÁCH HỒ SƠ BỆNH NHÂN (TRANG CHỦ MẶC ĐỊNH)
   // ==========================================
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-7">
+    <div className="max-w-7xl mx-auto px-4 py-8 space-y-7">
       {/* Tiêu đề & Giới thiệu */}
       <div className="text-left space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-[#0F766E] text-xs font-semibold">

@@ -37,7 +37,7 @@ export const DictionaryScreen: React.FC = () => {
   }, [searchQuery, selectedGroup]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 text-left">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 text-left">
       {/* Tiêu đề & Giới thiệu */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-[#0F172A] flex items-center gap-2">

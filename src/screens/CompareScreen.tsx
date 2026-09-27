@@ -65,7 +65,7 @@ export const CompareScreen: React.FC = () => {
   const newerReport = isReport1Older ? report2 : report1;
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       {/* Tiêu đề & nút Thay đổi lựa chọn */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>

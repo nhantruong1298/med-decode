@@ -69,7 +69,7 @@ export const IndicatorDetailScreen: React.FC = () => {
     giaTri !== null && giaTri !== undefined && giaTri !== '' ? String(giaTri) : '—';
 
   return (
-    <div className="max-w-3xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-5xl mx-auto px-4 py-6 space-y-6">
       {/* Nút quay lại đúng phiếu đang xem */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
         <button
@@ -202,22 +202,23 @@ export const IndicatorDetailScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Khối: Ý nghĩa chỉ số */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 text-left shadow-xs">
-        <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
-          <BookOpen className="w-5 h-5 text-[#0F766E]" />
-          <span>Ý nghĩa chỉ số</span>
-        </h2>
-        <p className="text-base text-[#475569] leading-relaxed">{def.giaiThich}</p>
-      </div>
+      {/* Khối: Ý nghĩa chỉ số & Cách đọc kết quả (2 cột khi màn rộng) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 text-left shadow-xs">
+          <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+            <BookOpen className="w-5 h-5 text-[#0F766E]" />
+            <span>Ý nghĩa chỉ số</span>
+          </h2>
+          <p className="text-base text-[#475569] leading-relaxed">{def.giaiThich}</p>
+        </div>
 
-      {/* Khối: Cách đọc kết quả */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 text-left shadow-xs">
-        <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
-          <HelpCircle className="w-5 h-5 text-[#0F766E]" />
-          <span>Cách đọc kết quả</span>
-        </h2>
-        <p className="text-base text-[#475569] leading-relaxed">{def.cachDoc}</p>
+        <div className="bg-white rounded-2xl border border-slate-200 p-6 space-y-3 text-left shadow-xs">
+          <h2 className="text-lg font-bold text-[#0F172A] flex items-center gap-2">
+            <HelpCircle className="w-5 h-5 text-[#0F766E]" />
+            <span>Cách đọc kết quả</span>
+          </h2>
+          <p className="text-base text-[#475569] leading-relaxed">{def.cachDoc}</p>
+        </div>
       </div>
 
       {/* Khối: Yếu tố sinh lý ảnh hưởng */}

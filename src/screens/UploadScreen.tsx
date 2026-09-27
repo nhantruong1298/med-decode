@@ -171,7 +171,7 @@ export const UploadScreen: React.FC = () => {
   };
 
   return (
-    <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
       {/* Thông tin hồ sơ bệnh nhân đang xét nghiệm */}
       {currentUser && (
         <div className="bg-teal-50/80 border border-teal-200 rounded-xl px-4 py-2.5 flex items-center justify-between text-left text-xs">

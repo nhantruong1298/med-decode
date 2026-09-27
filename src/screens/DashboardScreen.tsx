@@ -81,7 +81,7 @@ export const DashboardScreen: React.FC = () => {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6">
       {/* Header thanh điều hướng */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-4">
         <div>
@@ -279,7 +279,7 @@ export const DashboardScreen: React.FC = () => {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {filteredIndicators.map((item) => (
               <IndicatorCard
                 key={item.ma}

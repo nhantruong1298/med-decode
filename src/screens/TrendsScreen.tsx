@@ -150,7 +150,7 @@ export const TrendsScreen: React.FC = () => {
   }, [def, dataPoints]);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 text-left">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 text-left">
       {/* Nút quay lại & Tiêu đề */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">

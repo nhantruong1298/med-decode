@@ -91,7 +91,7 @@ export const ToolsScreen: React.FC = () => {
   const bmiResult = tinhChiSoBMI(parseFloat(heightCm) || 0, parseFloat(weightKg) || 0);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-6 text-left">
+    <div className="max-w-6xl mx-auto px-4 py-6 space-y-6 text-left">
       {/* Tiêu đề */}
       <div className="space-y-1">
         <h1 className="text-2xl font-bold text-[#0F172A] flex items-center gap-2">
