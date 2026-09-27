@@ -112,9 +112,9 @@ export const PrintReportModal: React.FC<PrintReportModalProps> = ({
               </svg>
               <div className="text-[11px] leading-tight text-slate-500">
                 <span className="font-semibold text-slate-700 block">Xác thực hồ sơ:</span>
-                Cloud Firestore Database
+                Cơ sở dữ liệu
                 <br />
-                <span className="text-[10px] text-teal-600 font-mono">MD-VERIFIED-OK</span>
+                <span className="text-[10px] text-teal-600 font-mono">MD-DA-XAC-THUC</span>
               </div>
             </div>
           </div>
